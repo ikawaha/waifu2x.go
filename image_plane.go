@@ -144,3 +144,17 @@ func deblocking(outputBlocks [][]*ImagePlane, blocksW, blocksH int) []*ImagePlan
 	}
 	return outputPlanes
 }
+
+func (p ImagePlane) NewPixels() *Pixels {
+	pix := NewPixels(p.Width, p.Height)
+	for i := 0; i < len(p.Buffer); i++ {
+		v := math.Floor(p.Buffer[i]*255.0) + 0.5
+		if v < 0 {
+			v = 0
+		} else if v > 255 {
+			v = 255
+		}
+		pix.Pix[i] = uint8(v)
+	}
+	return pix
+}

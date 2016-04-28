@@ -8,8 +8,8 @@ import (
 	"io"
 	"os"
 
-	"github.com/ikawaha/waifu2x-go"
-	"github.com/ikawaha/waifu2x-go/data"
+	"github.com/ikawaha/waifu2x.go"
+	"github.com/ikawaha/waifu2x.go/data"
 )
 
 const (
@@ -28,12 +28,20 @@ func run(opt *option) error {
 		return fmt.Errorf("load file %v, %v", opt.input, err)
 	}
 
-	var pix []uint8
+	var pix *waifu2x.Pixels
 	switch t := img.(type) {
 	case *image.RGBA:
-		pix = t.Pix
+		pix = &waifu2x.Pixels{
+			Width:  img.Bounds().Max.X,
+			Height: img.Bounds().Max.Y,
+			Pix:    t.Pix,
+		}
 	case *image.NRGBA:
-		pix = t.Pix
+		pix = &waifu2x.Pixels{
+			Width:  img.Bounds().Max.X,
+			Height: img.Bounds().Max.Y,
+			Pix:    t.Pix,
+		}
 	default:
 		return fmt.Errorf("unknown image format, %T", t)
 	}
@@ -56,26 +64,54 @@ func run(opt *option) error {
 		return fmt.Errorf("load noise model, %v", err)
 	}
 
-	model := waifu2x.Waifu2x{
-		Scale2xModel: model2x,
-		NoiseModel:   noise,
-		Scale:        opt.scale,
-		IsDenoising:  true,
+	r, g, b, a, _ := pix.Decompose()
+
+	//XXX ノイズ適用かどうかを決めるようにする
+	if true {
+		r, g, b = noise.Encode(r, g, b)
 	}
 
-	pix, width, height := model.Calc(pix, img.Bounds().Max.X, img.Bounds().Max.Y)
+	if opt.scale != 1.0 {
+		var err error
+		if r, err = r.NewExtendPixels(opt.scale); err != nil {
+			return fmt.Errorf("extend image error, %v", err)
+		}
+		if g, err = g.NewExtendPixels(opt.scale); err != nil {
+			return fmt.Errorf("extend image error, %v", err)
+		}
+		if b, err = b.NewExtendPixels(opt.scale); err != nil {
+			return fmt.Errorf("extend image error, %v", err)
+		}
+		if a, err = a.NewExtendPixels(opt.scale); err != nil {
+			return fmt.Errorf("extend image error, %v", err)
+		}
+	}
+	r, g, b = model2x.Encode(r, g, b)
+	pix, err = waifu2x.Compose(r, g, b, a)
+	if err != nil {
+		return fmt.Errorf("compose error, %v", err)
+	}
+
+	// model := waifu2x.Waifu2x{
+	// 	Scale2xModel: model2x,
+	// 	NoiseModel:   noise,
+	// 	Scale:        opt.scale,
+	// 	IsDenoising:  true,
+	// }
+
+	// pix, width, height := model.Calc(pix, img.Bounds().Max.X, img.Bounds().Max.Y)
 	rect0 := image.Rectangle{
 		Min: image.Point{X: 0, Y: 0},
-		Max: image.Point{X: width, Y: height},
+		Max: image.Point{X: pix.Width, Y: pix.Height},
 	}
 
 	switch t := img.(type) {
 	case *image.RGBA:
-		t.Pix = pix
+		t.Pix = pix.Pix
 		t.Rect = rect0
 		t.Stride = rect0.Dx() * 4
 	case *image.NRGBA:
-		t.Pix = pix
+		t.Pix = pix.Pix
 		t.Rect = rect0
 		t.Stride = rect0.Dx() * 4
 	default:
