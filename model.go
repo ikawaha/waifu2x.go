@@ -6,6 +6,8 @@ import (
 	"os"
 )
 
+type Model []Layer
+
 type Layer struct {
 	Bias         []float64       `json:"bias"`         //バイアス
 	KW           int             `json:"kW"`           //フィルタの幅
@@ -15,8 +17,6 @@ type Layer struct {
 	Weight       [][][][]float64 `json:"weight"`       //重み
 	WeightVec    []float64
 }
-
-type Model []Layer
 
 func flattenWeight(weight [][][][]float64) []float64 {
 	var vec []float64
@@ -54,42 +54,32 @@ func LoadModel(r io.Reader) (Model, error) {
 func (m Model) newPaddedPixels(p *Pixels) *Pixels {
 	px := len(m)
 	ex := NewPixels(p.Width+2*px, p.Height+2*px)
-	for h := 0; h < p.Height+2*px; h++ {
-		for w := 0; w < p.Width+2*px; w++ {
-			index := w + h*(p.Width+2*px)
-			if w < px {
-				// Left outer area
+	for h := 0; h < ex.Height; h++ {
+		for w := 0; w < ex.Width; w++ {
+			i := w + h*ex.Width
+			if w < px { // Left outer area
 				if h < px {
-					// Left upper area
-					ex.Pix[index] = p.Pix[0]
+					ex.Pix[i] = p.Pix[0] // Left upper area
 				} else if px+p.Height <= h {
-					// Left lower area
-					ex.Pix[index] = p.Pix[(p.Height-1)*p.Width]
+					ex.Pix[i] = p.Pix[(p.Height-1)*p.Width] // Left lower area
 				} else {
-					// Left outer area
-					ex.Pix[index] = p.Pix[(h-px)*p.Width]
+					ex.Pix[i] = p.Pix[(h-px)*p.Width] // Left outer area
+
 				}
-			} else if px+p.Width <= w {
-				// Right outer area
+			} else if px+p.Width <= w { // Right outer area
 				if h < px {
-					// Right upper area
-					ex.Pix[index] = p.Pix[p.Width-1]
+					ex.Pix[i] = p.Pix[p.Width-1] // Right upper area
 				} else if px+p.Height <= h {
-					// Right lower area
-					ex.Pix[index] = p.Pix[p.Width-1+(p.Height-1)*p.Width]
+					ex.Pix[i] = p.Pix[p.Width-1+(p.Height-1)*p.Width] // Right lower area
 				} else {
-					// Right outer area
-					ex.Pix[index] = p.Pix[p.Width-1+(h-px)*p.Width]
+					ex.Pix[i] = p.Pix[p.Width-1+(h-px)*p.Width] // Right outer area
 				}
 			} else if h < px {
-				// Upper outer area
-				ex.Pix[index] = p.Pix[w-px]
+				ex.Pix[i] = p.Pix[w-px] // Upper outer area
 			} else if px+p.Height <= h {
-				// Lower outer area
-				ex.Pix[index] = p.Pix[w-px+(p.Height-1)*p.Width]
+				ex.Pix[i] = p.Pix[w-px+(p.Height-1)*p.Width] // Lower outer area
 			} else {
-				// Inner area
-				ex.Pix[index] = p.Pix[w-px+(h-px)*p.Width]
+				ex.Pix[i] = p.Pix[w-px+(h-px)*p.Width] // Inner area
 			}
 		}
 	}
@@ -97,103 +87,98 @@ func (m Model) newPaddedPixels(p *Pixels) *Pixels {
 }
 
 func (m Model) Encode(r, g, b *Pixels) (R, G, B *Pixels) {
-	var inputPlanes []*ImagePlane
+	channels := make([]*ImagePlane, 0, 3)
 	for _, p := range []*Pixels{r, g, b} {
 		p = m.newPaddedPixels(p)
-		inputPlanes = append(inputPlanes, p.NewImagePlane())
+		channels = append(channels, p.NewImagePlane())
 	}
 
-	// blocking
-	inputBlocks, blocksW, blocksH := blocking(inputPlanes)
-
-	outputBlocks := make([][]*ImagePlane, len(inputBlocks))
-	for b := 0; b < len(inputBlocks); b++ {
-		inputBlock := inputBlocks[b]
-		var outputBlock []*ImagePlane
-		for l := 0; l < len(m); l++ {
-			nOutputPlane := m[l].NOutputPlane
-			// convolution
-			outputBlock = convolution(inputBlock, m[l].WeightVec, nOutputPlane, m[l].Bias)
-			inputBlock = outputBlock // propagate output plane to next layer input
-			inputBlocks[b] = nil
+	inputs, cols, rows := divide(channels)
+	outputs := make([]Stream, len(inputs))
+	for i := range inputs {
+		in := inputs[i]
+		var out Stream
+		for _, layer := range m {
+			out = layer.convolution(in)
+			in = out
 		}
-		outputBlocks[b] = outputBlock
+		outputs[i] = out
 	}
-	inputBlocks = nil
+	channels = conquer(outputs, cols, rows)
 
-	// de-blocking
-	outputPlanes := deblocking(outputBlocks, blocksW, blocksH)
-	if len(outputPlanes) != 3 {
-		panic("Output planes must be 3: color channel R, G, B.")
+	if len(channels) != 3 {
+		panic("Output planes must be 3: color channel R, G, B.") //XXX
 	}
 
-	R = outputPlanes[0].NewPixels()
-	G = outputPlanes[1].NewPixels()
-	B = outputPlanes[2].NewPixels()
+	R = channels[0].NewPixels()
+	G = channels[1].NewPixels()
+	B = channels[2].NewPixels()
 	return
 }
 
-func convolution(inputPlanes []*ImagePlane, W []float64, nOutputPlane int, bias []float64) []*ImagePlane {
-	width := inputPlanes[0].Width
-	height := inputPlanes[0].Height
-	outputPlanes := make([]*ImagePlane, nOutputPlane)
-	for i := 0; i < nOutputPlane; i++ {
-		outputPlanes[i] = NewImagePlane(width-2, height-2)
+func (l Layer) convolution(input Stream) Stream {
+
+	W := l.WeightVec
+
+	width := input.Channels[0].Width
+	height := input.Channels[0].Height
+	output := make([]*ImagePlane, l.NOutputPlane)
+	for i := range output {
+		output[i] = NewImagePlane(width-2, height-2)
 	}
-	sumValues := make([]float64, nOutputPlane)
-	biasValues := make([]float64, nOutputPlane)
-	for i := 0; i < nOutputPlane; i++ {
-		biasValues[i] = bias[i]
+
+	biasValues := make([]float64, l.NOutputPlane)
+	for i := range biasValues {
+		biasValues[i] = l.Bias[i]
 	}
+	sumValues := make([]float64, l.NOutputPlane)
 	for w := 1; w < width-1; w++ {
 		for h := 1; h < height-1; h++ {
 			for i := 0; i < len(biasValues); i++ {
 				sumValues[i] = biasValues[i]
 			}
-			for i := 0; i < len(inputPlanes); i++ {
-				i00 := inputPlanes[i].getValue(w-1, h-1)
-				i10 := inputPlanes[i].getValue(w, h-1)
-				i20 := inputPlanes[i].getValue(w+1, h-1)
-				i01 := inputPlanes[i].getValue(w-1, h)
-				i11 := inputPlanes[i].getValue(w, h)
-				i21 := inputPlanes[i].getValue(w+1, h)
-				i02 := inputPlanes[i].getValue(w-1, h+1)
-				i12 := inputPlanes[i].getValue(w, h+1)
-				i22 := inputPlanes[i].getValue(w+1, h+1)
-				for o := 0; o < nOutputPlane; o++ {
-					// assert inputPlanes.length == params.weight[o].length
-					weight_index := (o * len(inputPlanes) * 9) + (i * 9)
+			for i := 0; i < len(input.Channels); i++ {
+				i00 := input.Channels[i].getValue(w-1, h-1)
+				i10 := input.Channels[i].getValue(w, h-1)
+				i20 := input.Channels[i].getValue(w+1, h-1)
+				i01 := input.Channels[i].getValue(w-1, h)
+				i11 := input.Channels[i].getValue(w, h)
+				i21 := input.Channels[i].getValue(w+1, h)
+				i02 := input.Channels[i].getValue(w-1, h+1)
+				i12 := input.Channels[i].getValue(w, h+1)
+				i22 := input.Channels[i].getValue(w+1, h+1)
+				for o := 0; o < l.NOutputPlane; o++ {
+					idx := (o * len(input.Channels) * 9) + (i * 9)
 					value := sumValues[o]
-					value += i00 * W[weight_index]
-					weight_index++
-					value += i10 * W[weight_index]
-					weight_index++
-					value += i20 * W[weight_index]
-					weight_index++
-					value += i01 * W[weight_index]
-					weight_index++
-					value += i11 * W[weight_index]
-					weight_index++
-					value += i21 * W[weight_index]
-					weight_index++
-					value += i02 * W[weight_index]
-					weight_index++
-					value += i12 * W[weight_index]
-					weight_index++
-					value += i22 * W[weight_index]
-					weight_index++
+					value += i00 * W[idx]
+					idx++
+					value += i10 * W[idx]
+					idx++
+					value += i20 * W[idx]
+					idx++
+					value += i01 * W[idx]
+					idx++
+					value += i11 * W[idx]
+					idx++
+					value += i21 * W[idx]
+					idx++
+					value += i02 * W[idx]
+					idx++
+					value += i12 * W[idx]
+					idx++
+					value += i22 * W[idx]
+					idx++
 					sumValues[o] = value
 				}
 			}
-			for o := 0; o < nOutputPlane; o++ {
+			for o := 0; o < l.NOutputPlane; o++ {
 				v := sumValues[o]
-				//v += bias[o] // leaky ReLU bias is already added above
 				if v < 0 {
 					v *= 0.1
 				}
-				outputPlanes[o].setValue(w-1, h-1, v)
+				output[o].setValue(w-1, h-1, v)
 			}
 		}
 	}
-	return outputPlanes
+	return Stream{Channels: output, ID: input.ID}
 }
