@@ -1,0 +1,16 @@
+language: go
+
+go:
+  - 1.6
+  - tip
+
+sudo: false
+cache: bundler
+
+before_install:
+
+install:
+
+script:
+  - go test ./...
+  - go test -benchmem -bench .
