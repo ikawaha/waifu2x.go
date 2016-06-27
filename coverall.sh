@@ -6,7 +6,7 @@ ERROR=""
 
 echo "mode: count" > $COV_FILE
 
-for pkg in `go list ./...`
+for pkg in `go list .`
 do
     touch $COV_TMP_FILE
     go test -covermode=count -coverprofile=$COV_TMP_FILE $pkg/ || ERROR="Error testing $pkg"
