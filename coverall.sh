@@ -9,7 +9,7 @@ echo "mode: count" > $COV_FILE
 for pkg in `go list ./...`
 do
     touch $COV_TMP_FILE
-    go test -covermode=count -coverprofile=$COV_TMP_FILE $pkg || ERROR="Error testing $pkg"
+    go test -covermode=count -coverprofile=$COV_TMP_FILE $pkg/ || ERROR="Error testing $pkg"
     tail -n +2 $COV_TMP_FILE >> $COV_FILE || (echo "Unable to append coverage for $pkg" && exit 1)
 done
 
