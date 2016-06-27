@@ -17,5 +17,5 @@ install:
 script:
   - go test ./...
   - go test -benchmem -bench .
-  - /bin/sh ./go-coverall.sh
+  - /bin/sh ./coverall.sh
 
