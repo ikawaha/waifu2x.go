@@ -82,7 +82,7 @@ func Compose(r, g, b, a *Pixels) (*Pixels, error) {
 // NewExtendPixels creates the scaled image.
 func (p Pixels) NewExtendPixels(scale float64) (*Pixels, error) {
 	if scale < 1.0 {
-		return nil, fmt.Errorf("too small scale %d < 1.0", scale)
+		return nil, fmt.Errorf("too small scale %f < 1.0", scale)
 	}
 	width := int(math.Floor(float64(p.Width)*scale + 0.5))   //round
 	height := int(math.Floor(float64(p.Height)*scale + 0.5)) //round
