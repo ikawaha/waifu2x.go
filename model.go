@@ -4,10 +4,54 @@ import (
 	"encoding/json"
 	"io"
 	"os"
+	"sync"
 )
 
+const (
+	// AnimeStyleArtNoise1ModelFilePath : models/anime_style_art/noise1_model.json
+	AnimeStyleArtNoise1ModelFilePath = "models/anime_style_art/noise1_model.json"
+
+	// AnimeStyleArtNoise2ModelFilePath : models/anime_style_art/noise2_model.json
+	AnimeStyleArtNoise2ModelFilePath = "models/anime_style_art/noise2_model.json"
+
+	// AnimeStyleArtNoise3ModelFilePath : models/anime_style_art/noise3_model.json
+	AnimeStyleArtNoise3ModelFilePath = "models/anime_style_art/noise3_model.json"
+
+	// AnimeStyleArtScale2xModelFilePath : models/anime_style_art/scale2.0x_model.json
+	AnimeStyleArtScale2xModelFilePath = "models/anime_style_art/scale2.0x_model.json"
+
+	// AnimeStyleArtRGBNoise1ModelFilePath : models/anime_style_art_rgb/noise1_model.json
+	AnimeStyleArtRGBNoise1ModelFilePath = "models/anime_style_art_rgb/noise1_model.json"
+
+	// AnimeStyleArtRGBNoise2ModelFilePath : models/anime_style_art_rgb/noise2_model.json
+	AnimeStyleArtRGBNoise2ModelFilePath = "models/anime_style_art_rgb/noise2_model.json"
+
+	// AnimeStyleArtRGBNoise3ModelFilePath : models/anime_style_art_rgb/noise3_model.json
+	AnimeStyleArtRGBNoise3ModelFilePath = "models/anime_style_art_rgb/noise3_model.json"
+
+	// AnimeStyleArtRGBScale2xModelFilePath : models/anime_style_art_rgb/scale2.0x_model.json
+	AnimeStyleArtRGBScale2xModelFilePath = "models/anime_style_art_rgb/scale2.0x_model.json"
+
+	// PhotoNoise1ModelFilePath : models/photo/noise1_model.json
+	PhotoNoise1ModelFilePath = "models/photo/noise1_model.json"
+
+	// PhotoNoise2ModelFilePath : models/photo/noise2_model.json
+	PhotoNoise2ModelFilePath = "models/photo/noise2_model.json"
+
+	// PhotoNoise3ModelFilePath : models/photo/noise3_model.json
+	PhotoNoise3ModelFilePath = "models/photo/noise3_model.json"
+
+	// PhotoScale2xModelFilePath : models/photo/scale2.0x_model.json
+	PhotoScale2xModelFilePath = "models/photo/scale2.0x_model.json"
+
+	// UkbenchScale2xModelFilePath : models/ukbench/scale2.0x_model.json
+	UkbenchScale2xModelFilePath = "models/ukbench/scale2.0x_model.json"
+)
+
+// Model represents a model of a Deep Learning
 type Model []Layer
 
+// Layer represents a layer of a model
 type Layer struct {
 	Bias         []float64       `json:"bias"`         //バイアス
 	KW           int             `json:"kW"`           //フィルタの幅
@@ -30,6 +74,7 @@ func flattenWeight(weight [][][][]float64) []float64 {
 	return vec
 }
 
+// LoadModelFile loads a model from a json file
 func LoadModelFile(path string) (Model, error) {
 	fp, err := os.Open(path)
 	if err != nil {
@@ -39,6 +84,7 @@ func LoadModelFile(path string) (Model, error) {
 	return LoadModel(fp)
 }
 
+// LoadModel loads a model
 func LoadModel(r io.Reader) (Model, error) {
 	dec := json.NewDecoder(r)
 	var m Model
@@ -86,6 +132,7 @@ func (m Model) newPaddedPixels(p *Pixels) *Pixels {
 	return ex
 }
 
+// Encode applies model to RGB images
 func (m Model) Encode(r, g, b *Pixels) (R, G, B *Pixels) {
 	channels := make([]*ImagePlane, 0, 3)
 	for _, p := range []*Pixels{r, g, b} {
@@ -95,15 +142,20 @@ func (m Model) Encode(r, g, b *Pixels) (R, G, B *Pixels) {
 
 	inputs, cols, rows := divide(channels)
 	outputs := make([]Stream, len(inputs))
+	var wg sync.WaitGroup
 	for i := range inputs {
-		in := inputs[i]
-		var out Stream
-		for _, layer := range m {
-			out = layer.convolution(in)
-			in = out
-		}
-		outputs[i] = out
+		wg.Add(1)
+		go func(in Stream, i int) {
+			defer wg.Done()
+			var out Stream
+			for _, layer := range m {
+				out = layer.convolution(in)
+				in = out
+			}
+			outputs[i] = out
+		}(inputs[i], i)
 	}
+	wg.Wait()
 	channels = conquer(outputs, cols, rows)
 
 	if len(channels) != 3 {
@@ -120,9 +172,9 @@ func (l Layer) convolution(input Stream) Stream {
 
 	W := l.WeightVec
 
-	width := input.Channels[0].Width
-	height := input.Channels[0].Height
-	output := make([]*ImagePlane, l.NOutputPlane)
+	width := input[0].Width
+	height := input[0].Height
+	output := make(Stream, l.NOutputPlane)
 	for i := range output {
 		output[i] = NewImagePlane(width-2, height-2)
 	}
@@ -137,18 +189,18 @@ func (l Layer) convolution(input Stream) Stream {
 			for i := 0; i < len(biasValues); i++ {
 				sumValues[i] = biasValues[i]
 			}
-			for i := 0; i < len(input.Channels); i++ {
-				i00 := input.Channels[i].getValue(w-1, h-1)
-				i10 := input.Channels[i].getValue(w, h-1)
-				i20 := input.Channels[i].getValue(w+1, h-1)
-				i01 := input.Channels[i].getValue(w-1, h)
-				i11 := input.Channels[i].getValue(w, h)
-				i21 := input.Channels[i].getValue(w+1, h)
-				i02 := input.Channels[i].getValue(w-1, h+1)
-				i12 := input.Channels[i].getValue(w, h+1)
-				i22 := input.Channels[i].getValue(w+1, h+1)
+			for i := 0; i < len(input); i++ {
+				i00 := input[i].getValue(w-1, h-1)
+				i10 := input[i].getValue(w, h-1)
+				i20 := input[i].getValue(w+1, h-1)
+				i01 := input[i].getValue(w-1, h)
+				i11 := input[i].getValue(w, h)
+				i21 := input[i].getValue(w+1, h)
+				i02 := input[i].getValue(w-1, h+1)
+				i12 := input[i].getValue(w, h+1)
+				i22 := input[i].getValue(w+1, h+1)
 				for o := 0; o < l.NOutputPlane; o++ {
-					idx := (o * len(input.Channels) * 9) + (i * 9)
+					idx := (o * len(input) * 9) + (i * 9)
 					value := sumValues[o]
 					value += i00 * W[idx]
 					idx++
@@ -180,5 +232,5 @@ func (l Layer) convolution(input Stream) Stream {
 			}
 		}
 	}
-	return Stream{Channels: output, ID: input.ID}
+	return output
 }

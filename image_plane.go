@@ -6,16 +6,18 @@ import (
 )
 
 const (
-	BlockSize = 128
-	Overlap   = 14
+	blockSize = 128
+	overlap   = 14
 )
 
+// ImagePlane represents the image plane.
 type ImagePlane struct {
 	Width  int
 	Height int
 	Pix    []float64
 }
 
+// NewImagePlane creates the image plane.
 func NewImagePlane(w, h int) *ImagePlane {
 	return &ImagePlane{
 		Width:  w,
@@ -57,17 +59,20 @@ func (p *ImagePlane) setValueIndexed(i int, v float64) {
 	p.Pix[i] = v
 }
 
-type Stream struct {
-	ID       int
-	Channels []*ImagePlane
-}
+// Stream represents the divided image channels.
+type Stream []*ImagePlane
+
+//type Stream struct {
+//	ID       int
+//	Channels []*ImagePlane
+//}
 
 func divide(initialPlanes []*ImagePlane) (out []Stream, cols, rows int) {
 	widthInput := initialPlanes[0].Width
 	heightInput := initialPlanes[0].Height
 
-	blocksW := int(math.Ceil(float64(widthInput-Overlap) / float64(BlockSize-Overlap)))
-	blocksH := int(math.Ceil(float64(heightInput-Overlap) / float64(BlockSize-Overlap)))
+	blocksW := int(math.Ceil(float64(widthInput-overlap) / float64(blockSize-overlap)))
+	blocksH := int(math.Ceil(float64(heightInput-overlap) / float64(blockSize-overlap)))
 	blocks := blocksW * blocksH
 
 	inputBlocks := make([]Stream, blocks)
@@ -75,17 +80,17 @@ func divide(initialPlanes []*ImagePlane) (out []Stream, cols, rows int) {
 		blockIndexW := b % blocksW
 		blockIndexH := b / blocksW
 
-		blockWidth := BlockSize
-		blockHeight := BlockSize
+		blockWidth := blockSize
+		blockHeight := blockSize
 
 		if blockIndexW == blocksW-1 {
-			blockWidth = widthInput - ((BlockSize - Overlap) * blockIndexW) // right end block
+			blockWidth = widthInput - ((blockSize - overlap) * blockIndexW) // right end block
 		}
 		if blockIndexH == blocksH-1 {
-			blockHeight = heightInput - ((BlockSize - Overlap) * blockIndexH) // bottom end block
+			blockHeight = heightInput - ((blockSize - overlap) * blockIndexH) // bottom end block
 		}
 
-		channels := make([]*ImagePlane, len(initialPlanes))
+		channels := make(Stream, len(initialPlanes))
 		for i := 0; i < len(initialPlanes); i++ {
 			channels[i] = NewImagePlane(blockWidth, blockHeight)
 		}
@@ -93,34 +98,34 @@ func divide(initialPlanes []*ImagePlane) (out []Stream, cols, rows int) {
 		for w := 0; w < blockWidth; w++ {
 			for h := 0; h < blockHeight; h++ {
 				for i := 0; i < len(initialPlanes); i++ {
-					targetIndexW := blockIndexW*(BlockSize-Overlap) + w
-					targetIndexH := blockIndexH*(BlockSize-Overlap) + h
+					targetIndexW := blockIndexW*(blockSize-overlap) + w
+					targetIndexH := blockIndexH*(blockSize-overlap) + h
 					channel := initialPlanes[i]
 					v := channel.getValue(targetIndexW, targetIndexH)
 					channels[i].setValue(w, h, v)
 				}
 			}
 		}
-		inputBlocks[b] = Stream{Channels: channels, ID: b}
+		inputBlocks[b] = channels
 	}
 	return inputBlocks, blocksW, blocksH
 }
 
 func conquer(outputBlocks []Stream, blocksW, blocksH int) []*ImagePlane {
-	blockSize := outputBlocks[0].Channels[0].Width
+	blockSize := outputBlocks[0][0].Width
 	var width int
 	for b := 0; b < blocksW; b++ {
-		width += outputBlocks[b].Channels[0].Width
+		width += outputBlocks[b][0].Width
 	}
 
 	var height int
 	for b := 0; b < blocksW*blocksH; b += blocksW {
-		height += outputBlocks[b].Channels[0].Height
+		height += outputBlocks[b][0].Height
 	}
 
-	outputPlanes := make([]*ImagePlane, len(outputBlocks[0].Channels)) //XXX ???
+	outputPlanes := make([]*ImagePlane, len(outputBlocks[0])) //XXX ???
 	for b := 0; b < len(outputBlocks); b++ {
-		block := outputBlocks[b].Channels
+		block := outputBlocks[b]
 		blockIndexW := b % blocksW
 		blockIndexH := int(math.Floor(float64(b) / float64(blocksW)))
 
@@ -143,6 +148,7 @@ func conquer(outputBlocks []Stream, blocksW, blocksH int) []*ImagePlane {
 	return outputPlanes
 }
 
+// NewPixels create the image from the image plane.
 func (p ImagePlane) NewPixels() *Pixels {
 	pix := NewPixels(p.Width, p.Height)
 	for i := 0; i < len(p.Pix); i++ {

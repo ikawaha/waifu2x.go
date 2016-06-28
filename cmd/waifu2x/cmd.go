@@ -12,11 +12,6 @@ import (
 	"github.com/ikawaha/waifu2x.go/data"
 )
 
-const (
-	scale2xModelFile = "models/anime_style_art_rgb/scale2.0x_model.json"
-	noiseModelFile   = "models/anime_style_art_rgb/noise2_model.json"
-)
-
 func run(opt *option) error {
 	fp, err := os.Open(opt.input)
 	if err != nil {
@@ -46,7 +41,7 @@ func run(opt *option) error {
 		return fmt.Errorf("unknown image format, %T", t)
 	}
 
-	buf0, err := data.Asset(scale2xModelFile)
+	buf0, err := data.Asset(waifu2x.AnimeStyleArtRGBScale2xModelFilePath)
 	if err != nil {
 		return fmt.Errorf("open scale2x model, %v", err)
 	}
@@ -55,7 +50,7 @@ func run(opt *option) error {
 		return fmt.Errorf("load scale2x model, %v", err)
 	}
 
-	buf1, err := data.Asset(noiseModelFile)
+	buf1, err := data.Asset(waifu2x.AnimeStyleArtRGBNoise1ModelFilePath)
 	if err != nil {
 		return fmt.Errorf("open noise model, %v", err)
 	}

@@ -5,12 +5,14 @@ import (
 	"math"
 )
 
+// Pixels represents the image.
 type Pixels struct {
 	Width  int
 	Height int
 	Pix    []uint8 // 0以下を0, 255以上を255 とする
 }
 
+// NewPixels creates the image.
 func NewPixels(width, height int) *Pixels {
 	return &Pixels{
 		Width:  width,
@@ -19,6 +21,7 @@ func NewPixels(width, height int) *Pixels {
 	}
 }
 
+// NewImagePlane creates the image plane.
 func (p Pixels) NewImagePlane() *ImagePlane {
 	pl := NewImagePlane(p.Width, p.Height)
 	for i := 0; i < len(p.Pix); i++ {
@@ -27,6 +30,7 @@ func (p Pixels) NewImagePlane() *ImagePlane {
 	return pl
 }
 
+// Decompose separates the image to RGB channels.
 func (p Pixels) Decompose() (r, g, b, a *Pixels, err error) {
 	if len(p.Pix) != p.Width*p.Height*4 {
 		const msg = `decompose error, widht:%d, height:%d, buf len:%d`
@@ -49,6 +53,7 @@ func (p Pixels) Decompose() (r, g, b, a *Pixels, err error) {
 	return
 }
 
+// Compose integrates RGB channels to the image.
 func Compose(r, g, b, a *Pixels) (*Pixels, error) {
 	w := r.Width
 	h := r.Height
@@ -74,6 +79,7 @@ func Compose(r, g, b, a *Pixels) (*Pixels, error) {
 	return &Pixels{Width: w, Height: h, Pix: pix}, nil
 }
 
+// NewExtendPixels creates the scaled image.
 func (p Pixels) NewExtendPixels(scale float64) (*Pixels, error) {
 	if scale < 1.0 {
 		return nil, fmt.Errorf("too small scale %d < 1.0", scale)
