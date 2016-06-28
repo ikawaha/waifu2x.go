@@ -1,6 +1,7 @@
 package waifu2x
 
 import (
+	"reflect"
 	"testing"
 )
 
@@ -24,5 +25,13 @@ func TestLoadModel(t *testing.T) {
 		if _, err := LoadModelFile(f); err != nil {
 			t.Errorf("unexpected error, %v", err)
 		}
+	}
+}
+
+func TestFlattenWeight(t *testing.T) {
+	vec := flattenWeight([][][][]float64{{{{0, 1, 2, 3, 4}}}})
+	expected := []float64{0, 1, 2, 3, 4}
+	if !reflect.DeepEqual(expected, vec) {
+		t.Errorf("got %v, expected %+v", vec, expected)
 	}
 }

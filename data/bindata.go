@@ -132,19 +132,19 @@ func AssetNames() []string {
 
 // _bindata is a table, holding each asset generator, mapped to its name.
 var _bindata = map[string]func() (*asset, error){
-	"models/anime_style_art/noise1_model.json": modelsAnime_style_artNoise1_modelJson,
-	"models/anime_style_art/noise2_model.json": modelsAnime_style_artNoise2_modelJson,
-	"models/anime_style_art/noise3_model.json": modelsAnime_style_artNoise3_modelJson,
-	"models/anime_style_art/scale2.0x_model.json": modelsAnime_style_artScale20x_modelJson,
-	"models/anime_style_art_rgb/noise1_model.json": modelsAnime_style_art_rgbNoise1_modelJson,
-	"models/anime_style_art_rgb/noise2_model.json": modelsAnime_style_art_rgbNoise2_modelJson,
-	"models/anime_style_art_rgb/noise3_model.json": modelsAnime_style_art_rgbNoise3_modelJson,
+	"models/anime_style_art/noise1_model.json":        modelsAnime_style_artNoise1_modelJson,
+	"models/anime_style_art/noise2_model.json":        modelsAnime_style_artNoise2_modelJson,
+	"models/anime_style_art/noise3_model.json":        modelsAnime_style_artNoise3_modelJson,
+	"models/anime_style_art/scale2.0x_model.json":     modelsAnime_style_artScale20x_modelJson,
+	"models/anime_style_art_rgb/noise1_model.json":    modelsAnime_style_art_rgbNoise1_modelJson,
+	"models/anime_style_art_rgb/noise2_model.json":    modelsAnime_style_art_rgbNoise2_modelJson,
+	"models/anime_style_art_rgb/noise3_model.json":    modelsAnime_style_art_rgbNoise3_modelJson,
 	"models/anime_style_art_rgb/scale2.0x_model.json": modelsAnime_style_art_rgbScale20x_modelJson,
-	"models/photo/noise1_model.json": modelsPhotoNoise1_modelJson,
-	"models/photo/noise2_model.json": modelsPhotoNoise2_modelJson,
-	"models/photo/noise3_model.json": modelsPhotoNoise3_modelJson,
-	"models/photo/scale2.0x_model.json": modelsPhotoScale20x_modelJson,
-	"models/ukbench/scale2.0x_model.json": modelsUkbenchScale20x_modelJson,
+	"models/photo/noise1_model.json":                  modelsPhotoNoise1_modelJson,
+	"models/photo/noise2_model.json":                  modelsPhotoNoise2_modelJson,
+	"models/photo/noise3_model.json":                  modelsPhotoNoise3_modelJson,
+	"models/photo/scale2.0x_model.json":               modelsPhotoScale20x_modelJson,
+	"models/ukbench/scale2.0x_model.json":             modelsUkbenchScale20x_modelJson,
 }
 
 // AssetDir returns the file names below a certain
@@ -186,28 +186,29 @@ type bintree struct {
 	Func     func() (*asset, error)
 	Children map[string]*bintree
 }
+
 var _bintree = &bintree{nil, map[string]*bintree{
-	"models": &bintree{nil, map[string]*bintree{
-		"anime_style_art": &bintree{nil, map[string]*bintree{
-			"noise1_model.json": &bintree{modelsAnime_style_artNoise1_modelJson, map[string]*bintree{}},
-			"noise2_model.json": &bintree{modelsAnime_style_artNoise2_modelJson, map[string]*bintree{}},
-			"noise3_model.json": &bintree{modelsAnime_style_artNoise3_modelJson, map[string]*bintree{}},
-			"scale2.0x_model.json": &bintree{modelsAnime_style_artScale20x_modelJson, map[string]*bintree{}},
+	"models": {nil, map[string]*bintree{
+		"anime_style_art": {nil, map[string]*bintree{
+			"noise1_model.json":    {modelsAnime_style_artNoise1_modelJson, map[string]*bintree{}},
+			"noise2_model.json":    {modelsAnime_style_artNoise2_modelJson, map[string]*bintree{}},
+			"noise3_model.json":    {modelsAnime_style_artNoise3_modelJson, map[string]*bintree{}},
+			"scale2.0x_model.json": {modelsAnime_style_artScale20x_modelJson, map[string]*bintree{}},
 		}},
-		"anime_style_art_rgb": &bintree{nil, map[string]*bintree{
-			"noise1_model.json": &bintree{modelsAnime_style_art_rgbNoise1_modelJson, map[string]*bintree{}},
-			"noise2_model.json": &bintree{modelsAnime_style_art_rgbNoise2_modelJson, map[string]*bintree{}},
-			"noise3_model.json": &bintree{modelsAnime_style_art_rgbNoise3_modelJson, map[string]*bintree{}},
-			"scale2.0x_model.json": &bintree{modelsAnime_style_art_rgbScale20x_modelJson, map[string]*bintree{}},
+		"anime_style_art_rgb": {nil, map[string]*bintree{
+			"noise1_model.json":    {modelsAnime_style_art_rgbNoise1_modelJson, map[string]*bintree{}},
+			"noise2_model.json":    {modelsAnime_style_art_rgbNoise2_modelJson, map[string]*bintree{}},
+			"noise3_model.json":    {modelsAnime_style_art_rgbNoise3_modelJson, map[string]*bintree{}},
+			"scale2.0x_model.json": {modelsAnime_style_art_rgbScale20x_modelJson, map[string]*bintree{}},
 		}},
-		"photo": &bintree{nil, map[string]*bintree{
-			"noise1_model.json": &bintree{modelsPhotoNoise1_modelJson, map[string]*bintree{}},
-			"noise2_model.json": &bintree{modelsPhotoNoise2_modelJson, map[string]*bintree{}},
-			"noise3_model.json": &bintree{modelsPhotoNoise3_modelJson, map[string]*bintree{}},
-			"scale2.0x_model.json": &bintree{modelsPhotoScale20x_modelJson, map[string]*bintree{}},
+		"photo": {nil, map[string]*bintree{
+			"noise1_model.json":    {modelsPhotoNoise1_modelJson, map[string]*bintree{}},
+			"noise2_model.json":    {modelsPhotoNoise2_modelJson, map[string]*bintree{}},
+			"noise3_model.json":    {modelsPhotoNoise3_modelJson, map[string]*bintree{}},
+			"scale2.0x_model.json": {modelsPhotoScale20x_modelJson, map[string]*bintree{}},
 		}},
-		"ukbench": &bintree{nil, map[string]*bintree{
-			"scale2.0x_model.json": &bintree{modelsUkbenchScale20x_modelJson, map[string]*bintree{}},
+		"ukbench": {nil, map[string]*bintree{
+			"scale2.0x_model.json": {modelsUkbenchScale20x_modelJson, map[string]*bintree{}},
 		}},
 	}},
 }}
@@ -258,4 +259,3 @@ func _filePath(dir, name string) string {
 	cannonicalName := strings.Replace(name, "\\", "/", -1)
 	return filepath.Join(append([]string{dir}, strings.Split(cannonicalName, "/")...)...)
 }
-
