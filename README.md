@@ -3,7 +3,7 @@ go-waifu2x
 
 *A nitro-powered fork of waifu2x.go*
 
-Upscale your waifu.
+Upscale your waifu with no GPU.
 go-waifu2x is a fork of waifu2x.go that originates from [waifu2x-js](https://github.com/takuyaa/waifu2x-js).
 
 
@@ -13,7 +13,7 @@ Improvements
 This fork has the following improvements:
 
  - Concurrency (Up to 7x faster than the original on MacBook Pro Late 2021, 14-inch, M1 Max)
- - Upscale the alpha channel
+ - Upscale the alpha channel properly
  - More customizable CLI
    - Enable/disable concurrency (enabled by default)
    - Choose noise reduction level
