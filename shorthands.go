@@ -27,7 +27,6 @@ func ImageToPix(img image.Image) (pix []uint8, hasAlpha bool, err error) {
 	case *image.NRGBA:
 		pix = t.Pix
 	case *image.YCbCr:
-		var pix []uint8
 		r := t.Rect
 		for y := 0; y < r.Dy(); y++ {
 			for x := 0; x < r.Dx(); x++ {
