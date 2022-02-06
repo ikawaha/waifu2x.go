@@ -90,44 +90,20 @@ func convolution(inputPlanes []*ImagePlane, W []float64, nOutputPlane int, bias 
 	for i := 0; i < nOutputPlane; i++ {
 		biasValues[i] = bias[i]
 	}
+
+	stride := len(inputPlanes) * 9
 	for w := 1; w < width-1; w++ {
 		for h := 1; h < height-1; h++ {
 			for i := 0; i < len(biasValues); i++ {
 				sumValues[i] = biasValues[i]
 			}
 			for i := 0; i < len(inputPlanes); i++ {
-				i00 := inputPlanes[i].getValue(w-1, h-1)
-				i10 := inputPlanes[i].getValue(w, h-1)
-				i20 := inputPlanes[i].getValue(w+1, h-1)
-				i01 := inputPlanes[i].getValue(w-1, h)
-				i11 := inputPlanes[i].getValue(w, h)
-				i21 := inputPlanes[i].getValue(w+1, h)
-				i02 := inputPlanes[i].getValue(w-1, h+1)
-				i12 := inputPlanes[i].getValue(w, h+1)
-				i22 := inputPlanes[i].getValue(w+1, h+1)
+				i00, i10, i20, i01, i11, i21, i02, i12, i22 := inputPlanes[i].getBlock(w, h)
+				wi := i * 9
 				for o := 0; o < nOutputPlane; o++ {
-					// assert inputPlanes.length == params.weight[o].length
-					weight_index := (o * len(inputPlanes) * 9) + (i * 9)
-					value := sumValues[o]
-					value += i00 * W[weight_index]
-					weight_index++
-					value += i10 * W[weight_index]
-					weight_index++
-					value += i20 * W[weight_index]
-					weight_index++
-					value += i01 * W[weight_index]
-					weight_index++
-					value += i11 * W[weight_index]
-					weight_index++
-					value += i21 * W[weight_index]
-					weight_index++
-					value += i02 * W[weight_index]
-					weight_index++
-					value += i12 * W[weight_index]
-					weight_index++
-					value += i22 * W[weight_index]
-					weight_index++
-					sumValues[o] = value
+					ws := W[wi : wi+9]
+					sumValues[o] += ws[0]*i00 + ws[1]*i10 + ws[2]*i20 + ws[3]*i01 + ws[4]*i11 + ws[5]*i21 + ws[6]*i02 + ws[7]*i12 + ws[8]*i22
+					wi += stride
 				}
 			}
 			for o := 0; o < nOutputPlane; o++ {

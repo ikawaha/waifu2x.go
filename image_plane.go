@@ -24,25 +24,35 @@ func NewImagePlane(w, h int) *ImagePlane {
 	}
 }
 
-func (p ImagePlane) getLength() int {
+func (p *ImagePlane) getLength() int {
 	return len(p.Buffer)
 }
 
-func (p ImagePlane) getBuffer() []float64 {
+func (p *ImagePlane) getBuffer() []float64 {
 	return p.Buffer
 }
 
-func (p ImagePlane) index(w, h int) int {
+func (p *ImagePlane) index(w, h int) int {
 	return w + h*p.Width
 }
 
-func (p ImagePlane) getValue(w, h int) float64 {
+func (p *ImagePlane) getValue(w, h int) float64 {
 	i := p.index(w, h)
 	if i < 0 || i >= len(p.Buffer) {
 		panic(fmt.Errorf("w %d, h %d, index %d, len(buf) %d", w, h, i, len(p.Buffer)))
 	}
 	//fmt.Printf("w %d, h %d, index %d, len(buf) %d\n", w, h, i, len(p.Buffer))
 	return p.Buffer[i]
+}
+
+func (p *ImagePlane) getBlock(w, h int) (float64, float64, float64, float64, float64, float64, float64, float64, float64) {
+	i := (w - 1) + (h-1)*p.Width
+	j := i + p.Width
+	k := j + p.Width
+	a := p.Buffer[i : i+3 : i+3]
+	b := p.Buffer[j : j+3 : j+3]
+	c := p.Buffer[k : k+3 : k+3]
+	return a[0], a[1], a[2], b[0], b[1], b[2], c[0], c[1], c[2]
 }
 
 func (p *ImagePlane) setValue(w, h int, v float64) {
