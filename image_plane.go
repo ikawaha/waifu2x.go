@@ -45,8 +45,8 @@ func (p *ImagePlane) getValue(w, h int) float64 {
 	return p.Buffer[i]
 }
 
-func (p *ImagePlane) getBlock(w, h int) (float64, float64, float64, float64, float64, float64, float64, float64, float64) {
-	i := (w - 1) + (h-1)*p.Width
+func (p *ImagePlane) getBlock(x, y int) (float64, float64, float64, float64, float64, float64, float64, float64, float64) {
+	i := (x - 1) + (y-1)*p.Width
 	j := i + p.Width
 	k := j + p.Width
 	a := p.Buffer[i : i+3 : i+3]

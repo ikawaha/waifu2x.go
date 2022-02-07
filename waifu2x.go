@@ -90,29 +90,26 @@ func convolution(inputPlanes []*ImagePlane, W []float64, nOutputPlane int, bias 
 	for i := 0; i < nOutputPlane; i++ {
 		biasValues[i] = bias[i]
 	}
-
-	stride := len(inputPlanes) * 9
-	for w := 1; w < width-1; w++ {
-		for h := 1; h < height-1; h++ {
+	for y := 1; y < height-1; y++ {
+		for x := 1; x < width-1; x++ {
 			for i := 0; i < len(biasValues); i++ {
 				sumValues[i] = biasValues[i]
 			}
+			wi := 0
 			for i := 0; i < len(inputPlanes); i++ {
-				i00, i10, i20, i01, i11, i21, i02, i12, i22 := inputPlanes[i].getBlock(w, h)
-				wi := i * 9
+				i00, i10, i20, i01, i11, i21, i02, i12, i22 := inputPlanes[i].getBlock(x, y)
 				for o := 0; o < nOutputPlane; o++ {
 					ws := W[wi : wi+9]
 					sumValues[o] += ws[0]*i00 + ws[1]*i10 + ws[2]*i20 + ws[3]*i01 + ws[4]*i11 + ws[5]*i21 + ws[6]*i02 + ws[7]*i12 + ws[8]*i22
-					wi += stride
+					wi += 9
 				}
 			}
 			for o := 0; o < nOutputPlane; o++ {
 				v := sumValues[o]
-				//v += bias[o] // leaky ReLU bias is already added above
 				if v < 0 {
 					v *= 0.1
 				}
-				outputPlanes[o].setValue(w-1, h-1, v)
+				outputPlanes[o].setValue(x-1, y-1, v)
 			}
 		}
 	}
@@ -132,20 +129,19 @@ func normalize(image *ChannelImage) *ImagePlane {
 	return imagePlane
 }
 
+// W[][O*I*9]
 func typeW(model *Model) [][]float64 {
-	if model == nil {
-		panic("model nil")
-	}
 	var W [][]float64
 	for l := 0; l < len(*model); l++ {
 		// initialize weight matrix
-		layerWeight := (*model)[l].Weight
+		param := (*model)[l]
 		var vec []float64
-		for _, d3 := range layerWeight {
-			for _, d2 := range d3 {
-				for _, w := range d2 {
-					vec = append(vec, w...)
-				}
+		// [nOutputPlane][nInputPlane][3][3]
+		for i := 0; i < param.NInputPlane; i++ {
+			for o := 0; o < param.NOutputPlane; o++ {
+				vec = append(vec, param.Weight[o][i][0]...)
+				vec = append(vec, param.Weight[o][i][1]...)
+				vec = append(vec, param.Weight[o][i][2]...)
 			}
 		}
 		W = append(W, vec)
