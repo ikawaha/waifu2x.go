@@ -12,7 +12,7 @@ Improvements
 
 This fork has the following improvements:
 
- - Concurrency (Up to 7x faster than the original on MacBook Pro Late 2021, 14-inch, M1 Max)
+ - Concurrency and optimization (Up to 14x faster than the original on MacBook Pro Late 2021, 14-inch, M1 Max)
  - Upscale the alpha channel properly
  - More customizable CLI
    - Enable/disable concurrency (enabled by default)
