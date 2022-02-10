@@ -1,34 +1,25 @@
-go-waifu2x
-==========
+waifu2x.go
+===
 
-*A nitro-powered fork of waifu2x.go*
+[![experimental](http://badges.github.io/stability-badges/dist/experimental.svg)](http://github.com/badges/stability-badges)
 
-Upscale your waifu with no GPU.
-go-waifu2x is a fork of waifu2x.go that originates from [waifu2x-js](https://github.com/takuyaa/waifu2x-js).
+Image super-resolution using deep convolutional neural network (CNN).
+waifu2x.go is a clone of waifu2x-js.
 
+waifu2x-js: https://github.com/takuyaa/waifu2x-js
 
-Improvements
-------------
-
-This fork has the following improvements:
-
- - Concurrency and optimization (Up to 14x faster than the original on MacBook Pro Late 2021, 14-inch, M1 Max)
- - Upscale the alpha channel properly
- - More customizable CLI
-   - Enable/disable concurrency (enabled by default)
-   - Choose noise reduction level
-   - Choose mode (photo/anime)
- - `go.mod`
-
+Changes 
+---
+* 
+* 2022-02-09: Imported changes from [go-waifu2x](https://github.com/puhitaku/go-waifu2x), a fork of this repository. This is an excellent job done by @puhitaku and @orisano. It is 14x faster than the original in the non-GPU case.
 
 Note
-----
+---
 
 This software includes a binary and/or source version of model data from waifu2x
-which can be obtained from [here](https://github.com/nagadomi/waifu2x).
-
+which can be obtained from https://github.com/nagadomi/waifu2x.
 
 License
--------
+---
 
-See [LICENSE](LICENSE) for the copyright notice and the license.
+MIT
