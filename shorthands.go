@@ -2,14 +2,16 @@ package waifu2x
 
 import (
 	"bytes"
+	"embed"
 	"fmt"
 	"image"
-
-	"github.com/puhitaku/go-waifu2x/data"
 )
 
+//go:embed models/*
+var models embed.FS
+
 func LoadModelFromAssets(fn string) (*Model, error) {
-	buf, err := data.Asset(fn)
+	buf, err := models.ReadFile(fn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open: %w", err)
 	}
