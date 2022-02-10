@@ -5,32 +5,47 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"runtime"
 )
 
 const (
 	commandName  = "waifu2x"
-	usageMessage = "%s -input <input_file> [-output <output_file>] [-scale <scale_factor>]\n"
+	usageMessage = "%s -i|--input <input_file> [-o|--output <output_file>] [-s|--scale <scale_factor>] [-j|--jobs <n>] [-n|--noise <n>] [-m|--mode (anime|photo)]\n"
+)
+
+const (
+	modeAnime = "anime"
+	modePhoto = "photo"
 )
 
 type option struct {
-	scale   float64
-	input   string
-	output  string
-	flagSet *flag.FlagSet
+	input          string
+	output         string
+	scale          float64
+	jobs           int
+	noiseReduction int
+	mode           string
+	flagSet        *flag.FlagSet
 }
 
 func newOption(w io.Writer, eh flag.ErrorHandling) (o *option) {
 	o = &option{
-		// ContinueOnError ErrorHandling // Return a descriptive error.
-		// ExitOnError                   // Call os.Exit(2).
-		// PanicOnError                  // Call panic with a descriptive error.flag.ContinueOnError
 		flagSet: flag.NewFlagSet(commandName, eh),
 	}
 	// option settings
 	o.flagSet.SetOutput(w)
-	o.flagSet.Float64Var(&o.scale, "scale", 2.0, "scale >= 1.0")
+	o.flagSet.StringVar(&o.input, "i", "", "input file (short)")
 	o.flagSet.StringVar(&o.input, "input", "", "input file")
+	o.flagSet.StringVar(&o.output, "o", "", "output file (short) (default stdout)")
 	o.flagSet.StringVar(&o.output, "output", "", "output file (default stdout)")
+	o.flagSet.Float64Var(&o.scale, "s", 2.0, "scale multiplier >= 1.0 (short)")
+	o.flagSet.Float64Var(&o.scale, "scale", 2.0, "scale multiplier >= 1.0")
+	o.flagSet.IntVar(&o.jobs, "j", runtime.NumCPU(), "# of goroutines (short)")
+	o.flagSet.IntVar(&o.jobs, "jobs", runtime.NumCPU(), "# of goroutines")
+	o.flagSet.IntVar(&o.noiseReduction, "n", 0, "noise reduction level 0 <= n <= 3 (short)")
+	o.flagSet.IntVar(&o.noiseReduction, "noise", 0, "noise reduction level 0 <= n <= 3")
+	o.flagSet.StringVar(&o.mode, "m", modeAnime, "waifu2x mode, choose from 'anime' and 'photo' (short) (default anime)")
+	o.flagSet.StringVar(&o.mode, "mode", modeAnime, "waifu2x mode, choose from 'anime' and 'photo' (default anime)")
 
 	return
 }
@@ -48,6 +63,15 @@ func (o *option) parse(args []string) (err error) {
 	}
 	if o.scale < 1.0 {
 		return fmt.Errorf("invalid scale, %v > 1", o.scale)
+	}
+	if o.jobs < 1 {
+		return fmt.Errorf("invalid number of jobs, %v < 1", o.jobs)
+	}
+	if o.noiseReduction < 0 || o.noiseReduction > 3 {
+		return fmt.Errorf("invalid number of noise reduction level, it must be 0 - 3")
+	}
+	if o.mode != modeAnime && o.mode != modePhoto {
+		return fmt.Errorf("invalid mode, choose from 'anime' or 'photo'")
 	}
 	return
 }

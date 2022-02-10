@@ -1,54 +1,67 @@
 package waifu2x
 
 import (
+	"context"
 	"fmt"
+	"image"
 	"math"
+	"sync"
+
+	"golang.org/x/sync/semaphore"
 )
 
 type Waifu2x struct {
 	Scale2xModel *Model
 	NoiseModel   *Model
 	Scale        float64
-	IsDenoising  bool
+	Jobs         int
 }
 
-func (w Waifu2x) Calc(pix []uint8, width, height int) ([]uint8, int, int) {
+func (w Waifu2x) Calc(pix []uint8, width, height int, enableAlphaUpscaling bool) ([]uint8, image.Rectangle) {
 	if w.Scale2xModel == nil && w.NoiseModel == nil {
-		return nil, 0, 0
+		return nil, image.Rectangle{}
 	}
 
+	fmt.Printf("# of goroutines: %d\n", w.Jobs)
+
 	// decompose
+	fmt.Println("decomposing channels ...")
 	r, g, b, a := channelDecompose(pix, width, height)
-	//fmt.Printf("channelDecompose r:%d, g:%d, b:%d, a:%d\n",
-	//	len(r.Buffer), len(g.Buffer), len(b.Buffer), len(a.Buffer))
 
 	// de-noising
 	if w.NoiseModel != nil {
-		r, g, b = calcRGB(r, g, b, w.NoiseModel, 1)
-		//fmt.Printf("noise r:%d, g:%d, b:%d, a:%d\n", len(r.Buffer), len(g.Buffer), len(b.Buffer), len(a.Buffer))
+		fmt.Println("de-noising ...")
+		r, g, b = calcRGB(r, g, b, w.NoiseModel, 1, w.Jobs)
 	}
 
 	// calculate
 	if w.Scale2xModel != nil {
-		r, g, b = calcRGB(r, g, b, w.Scale2xModel, w.Scale)
-		//fmt.Printf("scale r:%d, g:%d, b:%d, a:%d\n",
-		//	len(r.Buffer), len(g.Buffer), len(b.Buffer), len(a.Buffer))
+		fmt.Println("upscaling ...")
+		r, g, b = calcRGB(r, g, b, w.Scale2xModel, w.Scale, w.Jobs)
 	}
-	// resize alpha channel
-	if w.Scale != 1 {
-		a = a.resize(w.Scale)
+
+	if enableAlphaUpscaling {
+		// upscale the alpha channel
+		if w.Scale2xModel != nil {
+			fmt.Println("upscaling alpha ...")
+			a, _, _ = calcRGB(a, a, a, w.Scale2xModel, w.Scale, w.Jobs)
+		}
+	} else {
+		// resize the alpha channel simply
+		if w.Scale != 1 {
+			a = a.resize(w.Scale)
+		}
 	}
 
 	if len(a.Buffer) != len(r.Buffer) {
-		fmt.Printf("alpha:%d, red:%d\n", len(a.Buffer), len(r.Buffer))
 		panic("A channel image size must be same with R channel image size")
 	}
 
 	// recompose
-	//fmt.Printf("r:%d, g:%d, b:%d, a:%d\n", len(r.Buffer), len(g.Buffer), len(b.Buffer), len(a.Buffer))
+	fmt.Println("composing channels ...")
 	image2x, width, height := channelCompose(r, g, b, a)
 
-	return image2x, width, height
+	return image2x, image.Rect(0, 0, width, height)
 }
 
 func denormalize(p *ImagePlane) *ChannelImage {
@@ -77,53 +90,26 @@ func convolution(inputPlanes []*ImagePlane, W []float64, nOutputPlane int, bias 
 	for i := 0; i < nOutputPlane; i++ {
 		biasValues[i] = bias[i]
 	}
-	for w := 1; w < width-1; w++ {
-		for h := 1; h < height-1; h++ {
+	for y := 1; y < height-1; y++ {
+		for x := 1; x < width-1; x++ {
 			for i := 0; i < len(biasValues); i++ {
 				sumValues[i] = biasValues[i]
 			}
+			wi := 0
 			for i := 0; i < len(inputPlanes); i++ {
-				i00 := inputPlanes[i].getValue(w-1, h-1)
-				i10 := inputPlanes[i].getValue(w, h-1)
-				i20 := inputPlanes[i].getValue(w+1, h-1)
-				i01 := inputPlanes[i].getValue(w-1, h)
-				i11 := inputPlanes[i].getValue(w, h)
-				i21 := inputPlanes[i].getValue(w+1, h)
-				i02 := inputPlanes[i].getValue(w-1, h+1)
-				i12 := inputPlanes[i].getValue(w, h+1)
-				i22 := inputPlanes[i].getValue(w+1, h+1)
+				i00, i10, i20, i01, i11, i21, i02, i12, i22 := inputPlanes[i].getBlock(x, y)
 				for o := 0; o < nOutputPlane; o++ {
-					// assert inputPlanes.length == params.weight[o].length
-					weight_index := (o * len(inputPlanes) * 9) + (i * 9)
-					value := sumValues[o]
-					value += i00 * W[weight_index]
-					weight_index++
-					value += i10 * W[weight_index]
-					weight_index++
-					value += i20 * W[weight_index]
-					weight_index++
-					value += i01 * W[weight_index]
-					weight_index++
-					value += i11 * W[weight_index]
-					weight_index++
-					value += i21 * W[weight_index]
-					weight_index++
-					value += i02 * W[weight_index]
-					weight_index++
-					value += i12 * W[weight_index]
-					weight_index++
-					value += i22 * W[weight_index]
-					weight_index++
-					sumValues[o] = value
+					ws := W[wi : wi+9]
+					sumValues[o] += ws[0]*i00 + ws[1]*i10 + ws[2]*i20 + ws[3]*i01 + ws[4]*i11 + ws[5]*i21 + ws[6]*i02 + ws[7]*i12 + ws[8]*i22
+					wi += 9
 				}
 			}
 			for o := 0; o < nOutputPlane; o++ {
 				v := sumValues[o]
-				//v += bias[o] // leaky ReLU bias is already added above
 				if v < 0 {
 					v *= 0.1
 				}
-				outputPlanes[o].setValue(w-1, h-1, v)
+				outputPlanes[o].setValue(x-1, y-1, v)
 			}
 		}
 	}
@@ -143,20 +129,19 @@ func normalize(image *ChannelImage) *ImagePlane {
 	return imagePlane
 }
 
+// W[][O*I*9]
 func typeW(model *Model) [][]float64 {
-	if model == nil {
-		panic("model nil")
-	}
 	var W [][]float64
 	for l := 0; l < len(*model); l++ {
 		// initialize weight matrix
-		layerWeight := (*model)[l].Weight
+		param := (*model)[l]
 		var vec []float64
-		for _, d3 := range layerWeight {
-			for _, d2 := range d3 {
-				for _, w := range d2 {
-					vec = append(vec, w...)
-				}
+		// [nOutputPlane][nInputPlane][3][3]
+		for i := 0; i < param.NInputPlane; i++ {
+			for o := 0; o < param.NOutputPlane; o++ {
+				vec = append(vec, param.Weight[o][i][0]...)
+				vec = append(vec, param.Weight[o][i][1]...)
+				vec = append(vec, param.Weight[o][i][2]...)
 			}
 		}
 		W = append(W, vec)
@@ -164,7 +149,7 @@ func typeW(model *Model) [][]float64 {
 	return W
 }
 
-func calcRGB(imageR, imageG, imageB *ChannelImage, model *Model, scale float64) (r, g, b *ChannelImage) {
+func calcRGB(imageR, imageG, imageB *ChannelImage, model *Model, scale float64, jobs int) (r, g, b *ChannelImage) {
 	var inputPlanes []*ImagePlane
 	for _, image := range []*ChannelImage{imageR, imageG, imageB} {
 		imgResized := image
@@ -181,22 +166,55 @@ func calcRGB(imageR, imageG, imageB *ChannelImage, model *Model, scale float64) 
 	// init W
 	W := typeW(model)
 
+	inputLock := &sync.Mutex{}
+	outputLock := &sync.Mutex{}
+	sem := semaphore.NewWeighted(int64(jobs))
+	wg := sync.WaitGroup{}
 	outputBlocks := make([][]*ImagePlane, len(inputBlocks))
+
+	digits := int(math.Log10(float64(len(inputBlocks)))) + 2
+	fmtStr := fmt.Sprintf("%%%dd/%%%dd", digits, digits) + " (%.1f%%)"
+
+	fmt.Printf(fmtStr, 0, len(inputBlocks), 0.0)
+
 	for b := 0; b < len(inputBlocks); b++ {
-		inputBlock := inputBlocks[b]
-		var outputBlock []*ImagePlane
-		for l := 0; l < len(*model); l++ {
-			nOutputPlane := (*model)[l].NOutputPlane
-			// convolution
-			if model == nil {
-				panic("xxx model nil")
-			}
-			outputBlock = convolution(inputBlock, W[l], nOutputPlane, (*model)[l].Bias)
-			inputBlock = outputBlock // propagate output plane to next layer input
-			inputBlocks[b] = nil
+		err := sem.Acquire(context.TODO(), 1)
+		if err != nil {
+			panic(fmt.Sprintf("failed to acquire the semaphore: %s", err))
 		}
-		outputBlocks[b] = outputBlock
+		wg.Add(1)
+		cb := b
+
+		go func() {
+			if cb >= 10 {
+				fmt.Printf("\x1b[2K\r"+fmtStr, cb+1, len(inputBlocks), float32(cb+1)/float32(len(inputBlocks))*100)
+			}
+
+			inputBlock := inputBlocks[cb]
+			var outputBlock []*ImagePlane
+			for l := 0; l < len(*model); l++ {
+				nOutputPlane := (*model)[l].NOutputPlane
+				// convolution
+				if model == nil {
+					panic("xxx model nil")
+				}
+				outputBlock = convolution(inputBlock, W[l], nOutputPlane, (*model)[l].Bias)
+				inputBlock = outputBlock // propagate output plane to next layer input
+
+				inputLock.Lock()
+				inputBlocks[cb] = nil
+				inputLock.Unlock()
+			}
+			outputLock.Lock()
+			outputBlocks[cb] = outputBlock
+			outputLock.Unlock()
+			sem.Release(1)
+			wg.Done()
+		}()
 	}
+
+	wg.Wait()
+	fmt.Println()
 	inputBlocks = nil
 
 	// de-blocking

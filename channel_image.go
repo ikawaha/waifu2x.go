@@ -47,7 +47,7 @@ func channelCompose(imageR, imageG, imageB, imageA *ChannelImage) (pix []uint8, 
 		image[i*4] = imageR.Buffer[i]
 		image[i*4+1] = imageG.Buffer[i]
 		image[i*4+2] = imageB.Buffer[i]
-		image[i*4+3] = 255
+		image[i*4+3] = imageA.Buffer[i]
 	}
 	return image, width, height
 }

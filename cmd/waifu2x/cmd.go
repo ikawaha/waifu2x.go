@@ -1,20 +1,15 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"image"
+	"image/jpeg"
 	"image/png"
 	"io"
 	"os"
+	"strings"
 
-	"github.com/ikawaha/waifu2x-go"
-	"github.com/ikawaha/waifu2x-go/data"
-)
-
-const (
-	scale2xModelFile = "models/anime_style_art_rgb/scale2.0x_model.json"
-	noiseModelFile   = "models/anime_style_art_rgb/noise2_model.json"
+	"github.com/puhitaku/go-waifu2x"
 )
 
 func run(opt *option) error {
@@ -23,64 +18,62 @@ func run(opt *option) error {
 		return fmt.Errorf("input file %v, %v", opt.input, err)
 	}
 	defer fp.Close()
-	img, err := png.Decode(fp)
-	if err != nil {
-		return fmt.Errorf("load file %v, %v", opt.input, err)
+
+	var img image.Image
+	if strings.HasSuffix(fp.Name(), "jpg") || strings.HasSuffix(fp.Name(), "jpeg") {
+		img, err = jpeg.Decode(fp)
+		if err != nil {
+			return fmt.Errorf("load file %v, %v", opt.input, err)
+		}
+	} else if strings.HasSuffix(fp.Name(), "png") {
+		img, err = png.Decode(fp)
+		if err != nil {
+			return fmt.Errorf("load file %v, %v", opt.input, err)
+		}
 	}
 
-	var pix []uint8
-	switch t := img.(type) {
-	case *image.RGBA:
-		pix = t.Pix
-	case *image.NRGBA:
-		pix = t.Pix
-	default:
-		return fmt.Errorf("unknown image format, %T", t)
+	pix, enableAlphaUpscaling, err := waifu2x.ImageToPix(img)
+	if err != nil {
+		return fmt.Errorf("failed to extract pix from the image: %w", err)
 	}
 
-	buf0, err := data.Asset(scale2xModelFile)
-	if err != nil {
-		return fmt.Errorf("open scale2x model, %v", err)
-	}
-	model2x, err := waifu2x.LoadModel(bytes.NewBuffer(buf0))
-	if err != nil {
-		return fmt.Errorf("load scale2x model, %v", err)
+	var modelDir string
+	var scaleFn string
+	var noiseFn string
+
+	switch opt.mode {
+	case modeAnime:
+		modelDir = "anime_style_art_rgb"
+	case modePhoto:
+		modelDir = "photo"
 	}
 
-	buf1, err := data.Asset(noiseModelFile)
-	if err != nil {
-		return fmt.Errorf("open noise model, %v", err)
+	scaleFn = fmt.Sprintf("models/%s/scale2.0x_model.json", modelDir)
+	if opt.noiseReduction > 0 {
+		noiseFn = fmt.Sprintf("models/%s/noise%d_model.json", modelDir, opt.noiseReduction)
 	}
-	noise, err := waifu2x.LoadModel(bytes.NewBuffer(buf1))
+
+	model2x, err := waifu2x.LoadModelFromAssets(scaleFn)
 	if err != nil {
-		return fmt.Errorf("load noise model, %v", err)
+		return fmt.Errorf("failed to load scale2x model: %w", err)
+	}
+
+	var noise *waifu2x.Model
+	if opt.noiseReduction > 0 {
+		noise, err = waifu2x.LoadModelFromAssets(noiseFn)
+		if err != nil {
+			return fmt.Errorf("failed to load noise model: %w", err)
+		}
 	}
 
 	model := waifu2x.Waifu2x{
 		Scale2xModel: model2x,
 		NoiseModel:   noise,
 		Scale:        opt.scale,
-		IsDenoising:  true,
+		Jobs:         opt.jobs,
 	}
 
-	pix, width, height := model.Calc(pix, img.Bounds().Max.X, img.Bounds().Max.Y)
-	rect0 := image.Rectangle{
-		Min: image.Point{X: 0, Y: 0},
-		Max: image.Point{X: width, Y: height},
-	}
-
-	switch t := img.(type) {
-	case *image.RGBA:
-		t.Pix = pix
-		t.Rect = rect0
-		t.Stride = rect0.Dx() * 4
-	case *image.NRGBA:
-		t.Pix = pix
-		t.Rect = rect0
-		t.Stride = rect0.Dx() * 4
-	default:
-		return fmt.Errorf("unknown image format, %T", t)
-	}
+	pix, rect := model.Calc(pix, img.Bounds().Max.X, img.Bounds().Max.Y, enableAlphaUpscaling)
 
 	var w io.Writer = os.Stdout
 	if opt.output != "" {
@@ -91,7 +84,7 @@ func run(opt *option) error {
 		defer fp.Close()
 		w = fp
 	}
-	if err := png.Encode(w, img); err != nil {
+	if err := png.Encode(w, waifu2x.PixToRGBA(pix, rect)); err != nil {
 		panic(err)
 	}
 	return nil
