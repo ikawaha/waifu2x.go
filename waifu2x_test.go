@@ -30,8 +30,8 @@ func BenchmarkWaifu(b *testing.B) {
 			alpha: false,
 		},
 		{
-			name:  "Wikipe-tan",
-			pic:   "testdata/wikipetan.png",
+			name:  "Neko-alpha",
+			pic:   "testdata/neko_alpha.png",
 			mode:  modeAnime,
 			noise: 0,
 			alpha: true,
@@ -141,7 +141,7 @@ func TestAllCombinations(t *testing.T) {
 		},
 	}
 
-	fn := "testdata/wikipetan.png"
+	fn := "testdata/neko_alpha.png"
 	fp, err := os.Open(fn)
 	if err != nil {
 		t.Fatalf("failed to open %s: %s", fn, err)
