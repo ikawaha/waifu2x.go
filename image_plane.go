@@ -24,14 +24,6 @@ func NewImagePlane(w, h int) *ImagePlane {
 	}
 }
 
-func (p *ImagePlane) getLength() int {
-	return len(p.Buffer)
-}
-
-func (p *ImagePlane) getBuffer() []float64 {
-	return p.Buffer
-}
-
 func (p *ImagePlane) index(w, h int) int {
 	return w + h*p.Width
 }
