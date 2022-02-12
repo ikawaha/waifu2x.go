@@ -65,7 +65,7 @@ func (w Waifu2x) Calc(pix []uint8, width, height int, enableAlphaUpscaling bool)
 }
 
 func denormalize(p *ImagePlane) *ChannelImage {
-	image := NewChannelImage(p.Width, p.Height)
+	img := NewChannelImage(p.Width, p.Height)
 	for i := 0; i < len(p.Buffer); i++ {
 		v := int(math.Floor(p.getValueIndexed(i)*255.0) + 0.5)
 		if v < 0 {
@@ -73,9 +73,9 @@ func denormalize(p *ImagePlane) *ChannelImage {
 		} else if v > 255 {
 			v = 255
 		}
-		image.Buffer[i] = uint8(v)
+		img.Buffer[i] = uint8(v)
 	}
-	return image
+	return img
 }
 
 func convolution(inputPlanes []*ImagePlane, W []float64, nOutputPlane int, bias []float64) []*ImagePlane {
@@ -151,10 +151,10 @@ func typeW(model Model) [][]float64 {
 
 func calcRGB(imageR, imageG, imageB *ChannelImage, model Model, scale float64, jobs int) (r, g, b *ChannelImage) {
 	var inputPlanes []*ImagePlane
-	for _, image := range []*ChannelImage{imageR, imageG, imageB} {
-		imgResized := image
+	for _, img := range []*ChannelImage{imageR, imageG, imageB} {
+		imgResized := img
 		if scale != 1.0 {
-			imgResized = image.resize(scale)
+			imgResized = img.resize(scale)
 		}
 		imgExtra := imgResized.extrapolation(len(model))
 		inputPlanes = append(inputPlanes, normalize(imgExtra))
