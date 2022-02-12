@@ -15,7 +15,7 @@ import (
 func run(opt *option) error {
 	fp, err := os.Open(opt.input)
 	if err != nil {
-		return fmt.Errorf("input file %v, %v", opt.input, err)
+		return fmt.Errorf("input file %v, %w", opt.input, err)
 	}
 	defer fp.Close()
 
@@ -23,12 +23,12 @@ func run(opt *option) error {
 	if strings.HasSuffix(fp.Name(), "jpg") || strings.HasSuffix(fp.Name(), "jpeg") {
 		img, err = jpeg.Decode(fp)
 		if err != nil {
-			return fmt.Errorf("load file %v, %v", opt.input, err)
+			return fmt.Errorf("load file %v, %w", opt.input, err)
 		}
 	} else if strings.HasSuffix(fp.Name(), "png") {
 		img, err = png.Decode(fp)
 		if err != nil {
-			return fmt.Errorf("load file %v, %v", opt.input, err)
+			return fmt.Errorf("load file %v, %w", opt.input, err)
 		}
 	}
 
@@ -79,7 +79,7 @@ func run(opt *option) error {
 	if opt.output != "" {
 		fp, err := os.Create(opt.output)
 		if err != nil {
-			return fmt.Errorf("output file, %v", err)
+			return fmt.Errorf("output file, %w", err)
 		}
 		defer fp.Close()
 		w = fp

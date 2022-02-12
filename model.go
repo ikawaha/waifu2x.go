@@ -7,12 +7,12 @@ import (
 )
 
 type Param struct {
-	Bias         []float64       `json:"bias"`         //バイアス
-	KW           int             `json:"kW"`           //フィルタの幅
-	KH           int             `json:"kH"`           //フィルタの高さ
-	Weight       [][][][]float64 `json:"weight"`       //重み
-	NInputPlane  int             `json:"nInputPlane"`  //入力平面数
-	NOutputPlane int             `json:"nOutputPlane"` //出力平面数
+	Bias         []float64       `json:"bias"`         // バイアス
+	KW           int             `json:"kW"`           // フィルタの幅
+	KH           int             `json:"kH"`           // フィルタの高さ
+	Weight       [][][][]float64 `json:"weight"`       // 重み
+	NInputPlane  int             `json:"nInputPlane"`  // 入力平面数
+	NOutputPlane int             `json:"nOutputPlane"` // 出力平面数
 }
 
 type Model []Param

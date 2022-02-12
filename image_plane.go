@@ -24,14 +24,6 @@ func NewImagePlane(w, h int) *ImagePlane {
 	}
 }
 
-func (p *ImagePlane) getLength() int {
-	return len(p.Buffer)
-}
-
-func (p *ImagePlane) getBuffer() []float64 {
-	return p.Buffer
-}
-
 func (p *ImagePlane) index(w, h int) int {
 	return w + h*p.Width
 }
@@ -41,7 +33,7 @@ func (p *ImagePlane) getValue(w, h int) float64 {
 	if i < 0 || i >= len(p.Buffer) {
 		panic(fmt.Errorf("w %d, h %d, index %d, len(buf) %d", w, h, i, len(p.Buffer)))
 	}
-	//fmt.Printf("w %d, h %d, index %d, len(buf) %d\n", w, h, i, len(p.Buffer))
+	// fmt.Printf("w %d, h %d, index %d, len(buf) %d\n", w, h, i, len(p.Buffer))
 	return p.Buffer[i]
 }
 
@@ -75,15 +67,15 @@ func blocking(initialPlanes []*ImagePlane) ([][]*ImagePlane, int, int) {
 	blocksH := int(math.Ceil(float64(heightInput-Overlap) / float64(BlockSize-Overlap)))
 	blocks := blocksW * blocksH
 
-	//fmt.Println("BlockSize:", BlockSize)
-	//fmt.Printf("blocksW:%d, blocksH:%d, blocks:%d\n", blocksW, blocksH, blocks)
+	// fmt.Println("BlockSize:", BlockSize)
+	// fmt.Printf("blocksW:%d, blocksH:%d, blocks:%d\n", blocksW, blocksH, blocks)
 
 	inputBlocks := make([][]*ImagePlane, blocks)
 	for b := 0; b < blocks; b++ {
 		blockIndexW := b % blocksW
 		blockIndexH := b / blocksW
 
-		//fmt.Printf("blockIndexW:%d, blockIndexH:%d\n", blockIndexW, blockIndexH)
+		// fmt.Printf("blockIndexW:%d, blockIndexH:%d\n", blockIndexW, blockIndexH)
 
 		blockWidth := BlockSize
 		blockHeight := BlockSize
@@ -95,7 +87,7 @@ func blocking(initialPlanes []*ImagePlane) ([][]*ImagePlane, int, int) {
 			blockHeight = heightInput - ((BlockSize - Overlap) * blockIndexH) // bottom end block
 		}
 
-		//fmt.Printf("\t>>blockWidth:%d, blockHeight:%d\n", blockWidth, blockHeight)
+		// fmt.Printf("\t>>blockWidth:%d, blockHeight:%d\n", blockWidth, blockHeight)
 
 		channels := make([]*ImagePlane, len(initialPlanes))
 		for i := 0; i < len(initialPlanes); i++ {
@@ -130,7 +122,7 @@ func deblocking(outputBlocks [][]*ImagePlane, blocksW, blocksH int) []*ImagePlan
 		height += outputBlocks[b][0].Height
 	}
 
-	outputPlanes := make([]*ImagePlane, len(outputBlocks[0])) //XXX ???
+	outputPlanes := make([]*ImagePlane, len(outputBlocks[0])) // XXX ???
 	for b := 0; b < len(outputBlocks); b++ {
 		block := outputBlocks[b]
 		blockIndexW := b % blocksW

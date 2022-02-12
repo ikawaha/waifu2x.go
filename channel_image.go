@@ -15,7 +15,7 @@ func NewChannelImage(w, h int) *ChannelImage {
 	return &ChannelImage{
 		Width:  w,
 		Height: h,
-		Buffer: make([]uint8, w*h), //XXX 0以下を0, 255以上を255 として登録する必要あり
+		Buffer: make([]uint8, w*h), // XXX 0以下を0, 255以上を255 として登録する必要あり
 	}
 }
 
@@ -104,17 +104,17 @@ func (c ChannelImage) extrapolation(px int) *ChannelImage {
 func (c ChannelImage) resize(scale float64) *ChannelImage {
 	width := c.Width
 	height := c.Height
-	scaledWidth := int(math.Floor(float64(width)*scale + 0.5))   //Round
-	scaledHeight := int(math.Floor(float64(height)*scale + 0.5)) //Round
+	scaledWidth := int(math.Floor(float64(width)*scale + 0.5))   // Round
+	scaledHeight := int(math.Floor(float64(height)*scale + 0.5)) // Round
 	scaledImage := NewChannelImage(scaledWidth, scaledHeight)
 	for w := 0; w < scaledWidth; w++ {
 		for h := 0; h < scaledHeight; h++ {
 			scaledIndex := w + (h * scaledWidth)
-			wOriginal := int(math.Floor((float64(w+1)/scale)+0.5) - 1) //Round
+			wOriginal := int(math.Floor((float64(w+1)/scale)+0.5) - 1) // Round
 			if wOriginal < 0 {
 				wOriginal = 0
 			}
-			hOriginal := int(math.Floor((float64(h+1)/scale)+0.5) - 1) //Round
+			hOriginal := int(math.Floor((float64(h+1)/scale)+0.5) - 1) // Round
 			if hOriginal < 0 {
 				hOriginal = 0
 			}
