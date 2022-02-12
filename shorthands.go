@@ -1,26 +1,9 @@
 package waifu2x
 
 import (
-	"bytes"
-	"embed"
 	"fmt"
 	"image"
 )
-
-//go:embed models/*
-var models embed.FS
-
-func LoadModelFromAssets(fn string) (*Model, error) {
-	buf, err := models.ReadFile(fn)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open: %w", err)
-	}
-	model, err := LoadModel(bytes.NewBuffer(buf))
-	if err != nil {
-		return nil, fmt.Errorf("failed to load : %w", err)
-	}
-	return model, nil
-}
 
 func ImageToPix(img image.Image) (pix []uint8, hasAlpha bool, err error) {
 	switch t := img.(type) {

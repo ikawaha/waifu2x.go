@@ -11,8 +11,8 @@ import (
 )
 
 type Waifu2x struct {
-	Scale2xModel *Model
-	NoiseModel   *Model
+	Scale2xModel Model
+	NoiseModel   Model
 	Scale        float64
 	Jobs         int
 }
@@ -130,11 +130,11 @@ func normalize(image *ChannelImage) *ImagePlane {
 }
 
 // W[][O*I*9]
-func typeW(model *Model) [][]float64 {
+func typeW(model Model) [][]float64 {
 	var W [][]float64
-	for l := 0; l < len(*model); l++ {
+	for l := 0; l < len(model); l++ {
 		// initialize weight matrix
-		param := (*model)[l]
+		param := model[l]
 		var vec []float64
 		// [nOutputPlane][nInputPlane][3][3]
 		for i := 0; i < param.NInputPlane; i++ {
@@ -149,14 +149,14 @@ func typeW(model *Model) [][]float64 {
 	return W
 }
 
-func calcRGB(imageR, imageG, imageB *ChannelImage, model *Model, scale float64, jobs int) (r, g, b *ChannelImage) {
+func calcRGB(imageR, imageG, imageB *ChannelImage, model Model, scale float64, jobs int) (r, g, b *ChannelImage) {
 	var inputPlanes []*ImagePlane
 	for _, image := range []*ChannelImage{imageR, imageG, imageB} {
 		imgResized := image
 		if scale != 1.0 {
 			imgResized = image.resize(scale)
 		}
-		imgExtra := imgResized.extrapolation(len(*model))
+		imgExtra := imgResized.extrapolation(len(model))
 		inputPlanes = append(inputPlanes, normalize(imgExtra))
 	}
 
@@ -192,13 +192,13 @@ func calcRGB(imageR, imageG, imageB *ChannelImage, model *Model, scale float64, 
 
 			inputBlock := inputBlocks[cb]
 			var outputBlock []*ImagePlane
-			for l := 0; l < len(*model); l++ {
-				nOutputPlane := (*model)[l].NOutputPlane
+			for l := 0; l < len(model); l++ {
+				nOutputPlane := model[l].NOutputPlane
 				// convolution
 				if model == nil {
 					panic("xxx model nil")
 				}
-				outputBlock = convolution(inputBlock, W[l], nOutputPlane, (*model)[l].Bias)
+				outputBlock = convolution(inputBlock, W[l], nOutputPlane, model[l].Bias)
 				inputBlock = outputBlock // propagate output plane to next layer input
 
 				inputLock.Lock()

@@ -37,38 +37,14 @@ func run(opt *option) error {
 		return fmt.Errorf("failed to extract pix from the image: %w", err)
 	}
 
-	var modelDir string
-	var scaleFn string
-	var noiseFn string
-
-	switch opt.mode {
-	case modeAnime:
-		modelDir = "anime_style_art_rgb"
-	case modePhoto:
-		modelDir = "photo"
-	}
-
-	scaleFn = fmt.Sprintf("models/%s/scale2.0x_model.json", modelDir)
-	if opt.noiseReduction > 0 {
-		noiseFn = fmt.Sprintf("models/%s/noise%d_model.json", modelDir, opt.noiseReduction)
-	}
-
-	model2x, err := waifu2x.LoadModelFromAssets(scaleFn)
+	ms, err := modelSet(opt.mode, opt.noiseReduction)
 	if err != nil {
-		return fmt.Errorf("failed to load scale2x model: %w", err)
-	}
-
-	var noise *waifu2x.Model
-	if opt.noiseReduction > 0 {
-		noise, err = waifu2x.LoadModelFromAssets(noiseFn)
-		if err != nil {
-			return fmt.Errorf("failed to load noise model: %w", err)
-		}
+		return fmt.Errorf("failed to load models: %w", err)
 	}
 
 	model := waifu2x.Waifu2x{
-		Scale2xModel: model2x,
-		NoiseModel:   noise,
+		Scale2xModel: ms.Scale2xModel,
+		NoiseModel:   ms.NoiseModel,
 		Scale:        opt.scale,
 		Jobs:         opt.jobs,
 	}
@@ -88,4 +64,14 @@ func run(opt *option) error {
 		panic(err)
 	}
 	return nil
+}
+
+func modelSet(mode string, noiseLevel int) (*waifu2x.ModelSet, error) {
+	switch mode {
+	case modeAnime:
+		return waifu2x.NewAnimeModelSet(noiseLevel)
+	case modePhoto:
+		return waifu2x.NewPhotoModelSet(noiseLevel)
+	}
+	return nil, fmt.Errorf("unknown model type: %s", mode)
 }
