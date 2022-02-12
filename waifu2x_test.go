@@ -39,16 +39,19 @@ func BenchmarkWaifu(b *testing.B) {
 	}
 
 	for _, tt := range tests {
-		fp, err := os.Open(tt.pic)
-		if err != nil {
-			b.Fatalf("failed to open the image (%s): %s", tt.pic, err)
-		}
-		defer fp.Close()
-		img, err := png.Decode(fp)
-		if err != nil {
-			b.Fatalf("failed to decode the image (%s): %s", tt.pic, err)
-		}
-		rgba := img.(*image.NRGBA)
+		var rgba *image.NRGBA
+		func() {
+			fp, err := os.Open(tt.pic)
+			if err != nil {
+				b.Fatalf("failed to open the image (%s): %s", tt.pic, err)
+			}
+			defer fp.Close()
+			img, err := png.Decode(fp)
+			if err != nil {
+				b.Fatalf("failed to decode the image (%s): %s", tt.pic, err)
+			}
+			rgba = img.(*image.NRGBA)
+		}()
 
 		var modelDir string
 		var scaleFn string
@@ -71,7 +74,7 @@ func BenchmarkWaifu(b *testing.B) {
 			b.Fatalf("failed to load scale2x model: %s", err)
 		}
 
-		var noise *Model
+		var noise Model
 		if tt.noise > 0 {
 			noise, err = LoadModelFromAssets(noiseFn)
 			if err != nil {
@@ -178,7 +181,7 @@ func TestAllCombinations(t *testing.T) {
 				t.Fatalf("failed to load scale2x model: %s", err)
 			}
 
-			var noise *Model
+			var noise Model
 			if tt.noise > 0 {
 				noise, err = LoadModelFromAssets(noiseFn)
 				if err != nil {
