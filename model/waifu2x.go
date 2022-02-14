@@ -3,7 +3,6 @@ package model
 import (
 	"context"
 	"fmt"
-	"image"
 	"math"
 	"sync"
 
@@ -17,16 +16,16 @@ type Waifu2x struct {
 	Jobs         int
 }
 
-func (w Waifu2x) Calc(pix []uint8, width, height int, enableAlphaUpscaling bool) ([]uint8, image.Rectangle) {
+func (w Waifu2x) Calc(img ChannelImage, enableAlphaUpscaling bool) ChannelImage {
 	if w.Scale2xModel == nil && w.NoiseModel == nil {
-		return nil, image.Rectangle{}
+		return ChannelImage{}
 	}
 
 	fmt.Printf("# of goroutines: %d\n", w.Jobs)
 
 	// decompose
 	fmt.Println("decomposing channels ...")
-	r, g, b, a := channelDecompose(pix, width, height)
+	r, g, b, a := channelDecompose(img)
 
 	// de-noising
 	if w.NoiseModel != nil {
@@ -59,12 +58,10 @@ func (w Waifu2x) Calc(pix []uint8, width, height int, enableAlphaUpscaling bool)
 
 	// recompose
 	fmt.Println("composing channels ...")
-	image2x, width, height := channelCompose(r, g, b, a)
-
-	return image2x, image.Rect(0, 0, width, height)
+	return channelCompose(r, g, b, a)
 }
 
-func denormalize(p *ImagePlane) *ChannelImage {
+func denormalize(p ImagePlane) ChannelImage {
 	img := NewChannelImage(p.Width, p.Height)
 	for i := 0; i < len(p.Buffer); i++ {
 		v := int(math.Floor(p.getValueIndexed(i)*255.0) + 0.5)
@@ -78,10 +75,10 @@ func denormalize(p *ImagePlane) *ChannelImage {
 	return img
 }
 
-func convolution(inputPlanes []*ImagePlane, W []float64, nOutputPlane int, bias []float64) []*ImagePlane {
+func convolution(inputPlanes []ImagePlane, W []float64, nOutputPlane int, bias []float64) []ImagePlane {
 	width := inputPlanes[0].Width
 	height := inputPlanes[0].Height
-	outputPlanes := make([]*ImagePlane, nOutputPlane)
+	outputPlanes := make([]ImagePlane, nOutputPlane)
 	for i := 0; i < nOutputPlane; i++ {
 		outputPlanes[i] = NewImagePlane(width-2, height-2)
 	}
@@ -116,7 +113,7 @@ func convolution(inputPlanes []*ImagePlane, W []float64, nOutputPlane int, bias 
 	return outputPlanes
 }
 
-func normalize(image *ChannelImage) *ImagePlane {
+func normalize(image ChannelImage) ImagePlane {
 	width := image.Width
 	height := image.Height
 	imagePlane := NewImagePlane(width, height)
@@ -149,9 +146,9 @@ func typeW(model Model) [][]float64 {
 	return W
 }
 
-func calcRGB(imageR, imageG, imageB *ChannelImage, model Model, scale float64, jobs int) (r, g, b *ChannelImage) {
-	var inputPlanes []*ImagePlane
-	for _, img := range []*ChannelImage{imageR, imageG, imageB} {
+func calcRGB(imageR, imageG, imageB ChannelImage, model Model, scale float64, jobs int) (r, g, b ChannelImage) {
+	var inputPlanes []ImagePlane
+	for _, img := range []ChannelImage{imageR, imageG, imageB} {
 		imgResized := img
 		if scale != 1.0 {
 			imgResized = img.resize(scale)
@@ -170,7 +167,7 @@ func calcRGB(imageR, imageG, imageB *ChannelImage, model Model, scale float64, j
 	outputLock := &sync.Mutex{}
 	sem := semaphore.NewWeighted(int64(jobs))
 	wg := sync.WaitGroup{}
-	outputBlocks := make([][]*ImagePlane, len(inputBlocks))
+	outputBlocks := make([][]ImagePlane, len(inputBlocks))
 
 	digits := int(math.Log10(float64(len(inputBlocks)))) + 2
 	fmtStr := fmt.Sprintf("%%%dd/%%%dd", digits, digits) + " (%.1f%%)"
@@ -191,7 +188,7 @@ func calcRGB(imageR, imageG, imageB *ChannelImage, model Model, scale float64, j
 			}
 
 			inputBlock := inputBlocks[cb]
-			var outputBlock []*ImagePlane
+			var outputBlock []ImagePlane
 			for l := 0; l < len(model); l++ {
 				nOutputPlane := model[l].NOutputPlane
 				// convolution

@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+	"image"
 	"math"
 )
 
@@ -11,48 +12,61 @@ type ChannelImage struct {
 	Buffer []uint8
 }
 
-func NewChannelImage(w, h int) *ChannelImage {
-	return &ChannelImage{
+func NewChannelImage(w, h int) ChannelImage {
+	return ChannelImage{
 		Width:  w,
 		Height: h,
 		Buffer: make([]uint8, w*h), // XXX 0以下を0, 255以上を255 として登録する必要あり
 	}
 }
 
-func channelDecompose(pix []uint8, width, height int) (r, g, b, a *ChannelImage) {
-	r = NewChannelImage(width, height)
-	g = NewChannelImage(width, height)
-	b = NewChannelImage(width, height)
-	a = NewChannelImage(width, height)
-	for w := 0; w < width; w++ {
-		for h := 0; h < height; h++ {
-			i := w + h*width
-			r.Buffer[i] = pix[(w*4)+(h*width*4)]
-			g.Buffer[i] = pix[(w*4)+(h*width*4)+1]
-			b.Buffer[i] = pix[(w*4)+(h*width*4)+2]
-			a.Buffer[i] = pix[(w*4)+(h*width*4)+3]
+func (c ChannelImage) ToRGBA() image.RGBA {
+	r := image.Rect(0, 0, c.Width, c.Height)
+	return image.RGBA{
+		Pix:    c.Buffer,
+		Stride: r.Dx() * 4,
+		Rect:   r,
+	}
+}
+
+func channelDecompose(img ChannelImage) (r, g, b, a ChannelImage) {
+	r = NewChannelImage(img.Width, img.Height)
+	g = NewChannelImage(img.Width, img.Height)
+	b = NewChannelImage(img.Width, img.Height)
+	a = NewChannelImage(img.Width, img.Height)
+	for w := 0; w < img.Width; w++ {
+		for h := 0; h < img.Height; h++ {
+			i := w + h*img.Width
+			r.Buffer[i] = img.Buffer[(w*4)+(h*img.Width*4)]
+			g.Buffer[i] = img.Buffer[(w*4)+(h*img.Width*4)+1]
+			b.Buffer[i] = img.Buffer[(w*4)+(h*img.Width*4)+2]
+			a.Buffer[i] = img.Buffer[(w*4)+(h*img.Width*4)+3]
 		}
 	}
 	return
 }
 
-func channelCompose(imageR, imageG, imageB, imageA *ChannelImage) (pix []uint8, width, height int) {
-	width = imageR.Width
-	height = imageR.Height
-	image := make([]uint8, width*height*4)
+func channelCompose(imageR, imageG, imageB, imageA ChannelImage) ChannelImage {
+	width := imageR.Width
+	height := imageR.Height
+	img := make([]uint8, width*height*4)
 	if width*height != len(imageR.Buffer) {
 		panic(fmt.Errorf("channelCompose() buflen:%d, width*height:%d", len(imageR.Buffer), width*height))
 	}
 	for i := 0; i < width*height; i++ {
-		image[i*4] = imageR.Buffer[i]
-		image[i*4+1] = imageG.Buffer[i]
-		image[i*4+2] = imageB.Buffer[i]
-		image[i*4+3] = imageA.Buffer[i]
+		img[i*4] = imageR.Buffer[i]
+		img[i*4+1] = imageG.Buffer[i]
+		img[i*4+2] = imageB.Buffer[i]
+		img[i*4+3] = imageA.Buffer[i]
 	}
-	return image, width, height
+	return ChannelImage{
+		Width:  width,
+		Height: height,
+		Buffer: img,
+	}
 }
 
-func (c ChannelImage) extrapolation(px int) *ChannelImage {
+func (c ChannelImage) extrapolation(px int) ChannelImage {
 	width := c.Width
 	height := c.Height
 	toIndex := func(w, h int) int {
@@ -101,7 +115,7 @@ func (c ChannelImage) extrapolation(px int) *ChannelImage {
 	return imageEx
 }
 
-func (c ChannelImage) resize(scale float64) *ChannelImage {
+func (c ChannelImage) resize(scale float64) ChannelImage {
 	width := c.Width
 	height := c.Height
 	scaledWidth := int(math.Floor(float64(width)*scale + 0.5))   // Round

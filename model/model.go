@@ -53,10 +53,10 @@ func LoadModelFromAssets(path string) (Model, error) {
 }
 
 const (
-	animeModelPath     = `models/anime_style_art_rgb/scale2.0x_model.json`
-	animeNoisePathTmpl = `models/anime_style_art_rgb/noise%d_model.json`
-	photoModelPath     = `models/photo/scale2.0x_model.json`
-	photoNoisePathTmpl = `model/photo/noise%d_model.json`
+	animeModelPath     = `data/anime_style_art_rgb/scale2.0x_model.json`
+	animeNoisePathTmpl = `data/anime_style_art_rgb/noise%d_model.json`
+	photoModelPath     = `data/photo/scale2.0x_model.json`
+	photoNoisePathTmpl = `data/photo/noise%d_model.json`
 )
 
 type ModelType int

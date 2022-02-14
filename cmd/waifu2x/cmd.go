@@ -48,8 +48,12 @@ func run(opt *option) error {
 		Scale:        opt.scale,
 		Jobs:         opt.jobs,
 	}
-
-	pix, rect := w2x.Calc(pix, img.Bounds().Max.X, img.Bounds().Max.Y, enableAlphaUpscaling)
+	ci := model.ChannelImage{
+		Width:  img.Bounds().Max.X,
+		Height: img.Bounds().Max.Y,
+		Buffer: pix,
+	}
+	ci = w2x.Calc(ci, enableAlphaUpscaling)
 
 	var w io.Writer = os.Stdout
 	if opt.output != "" {
@@ -60,7 +64,8 @@ func run(opt *option) error {
 		defer fp.Close()
 		w = fp
 	}
-	if err := png.Encode(w, model.PixToRGBA(pix, rect)); err != nil {
+	rgba := ci.ToRGBA()
+	if err := png.Encode(w, &rgba); err != nil {
 		panic(err)
 	}
 	return nil

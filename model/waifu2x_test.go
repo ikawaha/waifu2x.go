@@ -91,7 +91,12 @@ func BenchmarkWaifu(b *testing.B) {
 			}
 
 			b.ResetTimer()
-			model.Calc(rgba.Pix, rgba.Bounds().Max.X, rgba.Bounds().Max.Y, tt.alpha)
+			img := ChannelImage{
+				Width:  rgba.Bounds().Max.X,
+				Height: rgba.Bounds().Max.Y,
+				Buffer: rgba.Pix,
+			}
+			model.Calc(img, tt.alpha)
 		})
 	}
 }
@@ -195,8 +200,12 @@ func TestAllCombinations(t *testing.T) {
 				Scale:        2,
 				Jobs:         runtime.NumCPU(),
 			}
-
-			model.Calc(rgba.Pix, rgba.Bounds().Max.X, rgba.Bounds().Max.Y, true)
+			img := ChannelImage{
+				Buffer: rgba.Pix,
+				Width:  rgba.Bounds().Max.X,
+				Height: rgba.Bounds().Max.Y,
+			}
+			model.Calc(img, true)
 		})
 	}
 }

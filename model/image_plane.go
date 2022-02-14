@@ -16,19 +16,19 @@ type ImagePlane struct {
 	Buffer []float64
 }
 
-func NewImagePlane(w, h int) *ImagePlane {
-	return &ImagePlane{
+func NewImagePlane(w, h int) ImagePlane {
+	return ImagePlane{
 		Width:  w,
 		Height: h,
 		Buffer: make([]float64, w*h),
 	}
 }
 
-func (p *ImagePlane) index(w, h int) int {
+func (p ImagePlane) index(w, h int) int {
 	return w + h*p.Width
 }
 
-func (p *ImagePlane) getValue(w, h int) float64 {
+func (p ImagePlane) getValue(w, h int) float64 {
 	i := p.index(w, h)
 	if i < 0 || i >= len(p.Buffer) {
 		panic(fmt.Errorf("w %d, h %d, index %d, len(buf) %d", w, h, i, len(p.Buffer)))
@@ -37,7 +37,7 @@ func (p *ImagePlane) getValue(w, h int) float64 {
 	return p.Buffer[i]
 }
 
-func (p *ImagePlane) getBlock(x, y int) (float64, float64, float64, float64, float64, float64, float64, float64, float64) {
+func (p ImagePlane) getBlock(x, y int) (float64, float64, float64, float64, float64, float64, float64, float64, float64) {
 	i := (x - 1) + (y-1)*p.Width
 	j := i + p.Width
 	k := j + p.Width
@@ -51,7 +51,7 @@ func (p *ImagePlane) setValue(w, h int, v float64) {
 	p.Buffer[p.index(w, h)] = v
 }
 
-func (p *ImagePlane) getValueIndexed(i int) float64 {
+func (p ImagePlane) getValueIndexed(i int) float64 {
 	return p.Buffer[i]
 }
 
@@ -59,7 +59,7 @@ func (p *ImagePlane) setValueIndexed(i int, v float64) {
 	p.Buffer[i] = v
 }
 
-func blocking(initialPlanes []*ImagePlane) ([][]*ImagePlane, int, int) {
+func blocking(initialPlanes []ImagePlane) ([][]ImagePlane, int, int) {
 	widthInput := initialPlanes[0].Width
 	heightInput := initialPlanes[0].Height
 
@@ -70,7 +70,7 @@ func blocking(initialPlanes []*ImagePlane) ([][]*ImagePlane, int, int) {
 	// fmt.Println("BlockSize:", BlockSize)
 	// fmt.Printf("blocksW:%d, blocksH:%d, blocks:%d\n", blocksW, blocksH, blocks)
 
-	inputBlocks := make([][]*ImagePlane, blocks)
+	inputBlocks := make([][]ImagePlane, blocks)
 	for b := 0; b < blocks; b++ {
 		blockIndexW := b % blocksW
 		blockIndexH := b / blocksW
@@ -89,7 +89,7 @@ func blocking(initialPlanes []*ImagePlane) ([][]*ImagePlane, int, int) {
 
 		// fmt.Printf("\t>>blockWidth:%d, blockHeight:%d\n", blockWidth, blockHeight)
 
-		channels := make([]*ImagePlane, len(initialPlanes))
+		channels := make([]ImagePlane, len(initialPlanes))
 		for i := 0; i < len(initialPlanes); i++ {
 			channels[i] = NewImagePlane(blockWidth, blockHeight)
 		}
@@ -110,7 +110,7 @@ func blocking(initialPlanes []*ImagePlane) ([][]*ImagePlane, int, int) {
 	return inputBlocks, blocksW, blocksH
 }
 
-func deblocking(outputBlocks [][]*ImagePlane, blocksW, blocksH int) []*ImagePlane {
+func deblocking(outputBlocks [][]ImagePlane, blocksW, blocksH int) []ImagePlane {
 	blockSize := outputBlocks[0][0].Width
 	var width int
 	for b := 0; b < blocksW; b++ {
@@ -122,14 +122,14 @@ func deblocking(outputBlocks [][]*ImagePlane, blocksW, blocksH int) []*ImagePlan
 		height += outputBlocks[b][0].Height
 	}
 
-	outputPlanes := make([]*ImagePlane, len(outputBlocks[0])) // XXX ???
+	outputPlanes := make([]ImagePlane, len(outputBlocks[0])) // XXX ???
 	for b := 0; b < len(outputBlocks); b++ {
 		block := outputBlocks[b]
 		blockIndexW := b % blocksW
 		blockIndexH := int(math.Floor(float64(b) / float64(blocksW)))
 
 		for i := 0; i < len(block); i++ {
-			if outputPlanes[i] == nil {
+			if len(outputPlanes[i].Buffer) == 0 {
 				outputPlanes[i] = NewImagePlane(width, height)
 			}
 			channelBlock := block[i]
