@@ -1,4 +1,4 @@
-package waifu2x
+package model
 
 import (
 	"context"

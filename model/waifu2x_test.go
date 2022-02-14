@@ -1,4 +1,4 @@
-package waifu2x
+package model
 
 import (
 	"fmt"
@@ -24,14 +24,14 @@ func BenchmarkWaifu(b *testing.B) {
 	}{
 		{
 			name:  "Neko",
-			pic:   "testdata/neko_small.png",
+			pic:   "../testdata/neko_small.png",
 			mode:  modeAnime,
 			noise: 0,
 			alpha: false,
 		},
 		{
 			name:  "Neko-alpha",
-			pic:   "testdata/neko_alpha.png",
+			pic:   "../testdata/neko_alpha.png",
 			mode:  modeAnime,
 			noise: 0,
 			alpha: true,
@@ -144,7 +144,7 @@ func TestAllCombinations(t *testing.T) {
 		},
 	}
 
-	fn := "testdata/neko_alpha.png"
+	fn := "../testdata/neko_alpha.png"
 	fp, err := os.Open(fn)
 	if err != nil {
 		t.Fatalf("failed to open %s: %s", fn, err)
@@ -171,9 +171,9 @@ func TestAllCombinations(t *testing.T) {
 				modelDir = "photo"
 			}
 
-			scaleFn = fmt.Sprintf("models/%s/scale2.0x_model.json", modelDir)
+			scaleFn = fmt.Sprintf("data/%s/scale2.0x_model.json", modelDir)
 			if tt.noise > 0 {
-				noiseFn = fmt.Sprintf("models/%s/noise%d_model.json", modelDir, tt.noise)
+				noiseFn = fmt.Sprintf("data/%s/noise%d_model.json", modelDir, tt.noise)
 			}
 
 			model2x, err := LoadModelFromAssets(scaleFn)

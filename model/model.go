@@ -1,4 +1,4 @@
-package waifu2x
+package model
 
 import (
 	"embed"
@@ -37,11 +37,14 @@ func LoadModel(r io.Reader) (Model, error) {
 	return m, nil
 }
 
-//go:embed models/anime_style_art_rgb/* models/photo/*
+//go:embed data/anime_style_art_rgb/* data/photo/*
 var assets embed.FS
 
 func LoadModelFromAssets(path string) (Model, error) {
 	fsys, err := assets.Open(path)
+	if err != nil {
+		return nil, err
+	}
 	model, err := LoadModel(fsys)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load : %w", err)

@@ -9,7 +9,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/puhitaku/go-waifu2x"
+	"github.com/puhitaku/go-waifu2x/model"
 )
 
 func run(opt *option) error {
@@ -32,7 +32,7 @@ func run(opt *option) error {
 		}
 	}
 
-	pix, enableAlphaUpscaling, err := waifu2x.ImageToPix(img)
+	pix, enableAlphaUpscaling, err := model.ImageToPix(img)
 	if err != nil {
 		return fmt.Errorf("failed to extract pix from the image: %w", err)
 	}
@@ -42,14 +42,14 @@ func run(opt *option) error {
 		return fmt.Errorf("failed to load models: %w", err)
 	}
 
-	model := waifu2x.Waifu2x{
+	w2x := model.Waifu2x{
 		Scale2xModel: ms.Scale2xModel,
 		NoiseModel:   ms.NoiseModel,
 		Scale:        opt.scale,
 		Jobs:         opt.jobs,
 	}
 
-	pix, rect := model.Calc(pix, img.Bounds().Max.X, img.Bounds().Max.Y, enableAlphaUpscaling)
+	pix, rect := w2x.Calc(pix, img.Bounds().Max.X, img.Bounds().Max.Y, enableAlphaUpscaling)
 
 	var w io.Writer = os.Stdout
 	if opt.output != "" {
@@ -60,18 +60,18 @@ func run(opt *option) error {
 		defer fp.Close()
 		w = fp
 	}
-	if err := png.Encode(w, waifu2x.PixToRGBA(pix, rect)); err != nil {
+	if err := png.Encode(w, model.PixToRGBA(pix, rect)); err != nil {
 		panic(err)
 	}
 	return nil
 }
 
-func modelSet(mode string, noiseLevel int) (*waifu2x.ModelSet, error) {
+func modelSet(mode string, noiseLevel int) (*model.ModelSet, error) {
 	switch mode {
 	case modeAnime:
-		return waifu2x.NewAnimeModelSet(noiseLevel)
+		return model.NewAnimeModelSet(noiseLevel)
 	case modePhoto:
-		return waifu2x.NewPhotoModelSet(noiseLevel)
+		return model.NewPhotoModelSet(noiseLevel)
 	}
 	return nil, fmt.Errorf("unknown model type: %s", mode)
 }
