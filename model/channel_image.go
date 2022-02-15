@@ -149,17 +149,17 @@ func (c ChannelImage) extrapolation(px int) ChannelImage {
 func (c ChannelImage) resize(scale float64) ChannelImage {
 	width := c.Width
 	height := c.Height
-	scaledWidth := int(math.Floor(float64(width)*scale + 0.5))   // Round
-	scaledHeight := int(math.Floor(float64(height)*scale + 0.5)) // Round
+	scaledWidth := int(math.Round(float64(width) * scale))
+	scaledHeight := int(math.Round(float64(height) * scale))
 	scaledImage := NewChannelImageWidthHeight(scaledWidth, scaledHeight)
 	for w := 0; w < scaledWidth; w++ {
 		for h := 0; h < scaledHeight; h++ {
 			scaledIndex := w + (h * scaledWidth)
-			wOriginal := int(math.Floor((float64(w+1)/scale)+0.5) - 1) // Round
+			wOriginal := int(math.Round(float64(w+1)/scale) - 1)
 			if wOriginal < 0 {
 				wOriginal = 0
 			}
-			hOriginal := int(math.Floor((float64(h+1)/scale)+0.5) - 1) // Round
+			hOriginal := int(math.Round(float64(h+1)/scale) - 1)
 			if hOriginal < 0 {
 				hOriginal = 0
 			}
