@@ -12,12 +12,43 @@ type ChannelImage struct {
 	Buffer []uint8
 }
 
-func NewChannelImage(w, h int) ChannelImage {
+func NewChannelImageWidthHeight(width, height int) ChannelImage {
 	return ChannelImage{
-		Width:  w,
-		Height: h,
-		Buffer: make([]uint8, w*h), // XXX 0以下を0, 255以上を255 として登録する必要あり
+		Width:  width,
+		Height: height,
+		Buffer: make([]uint8, width*height), // XXX 0以下を0, 255以上を255 として登録する必要あり
 	}
+}
+
+func NewChannelImage(img image.Image) (ChannelImage, bool, error) {
+	var (
+		b      []uint8
+		opaque bool
+	)
+	switch t := img.(type) {
+	case *image.RGBA:
+		b = t.Pix
+		opaque = t.Opaque()
+	case *image.NRGBA:
+		b = t.Pix
+		opaque = t.Opaque()
+	case *image.YCbCr:
+		r := t.Rect
+		for y := 0; y < r.Dy(); y++ {
+			for x := 0; x < r.Dx(); x++ {
+				R, G, B, A := t.At(x, y).RGBA()
+				b = append(b, uint8(R>>8), uint8(G>>8), uint8(B>>8), uint8(A>>8))
+			}
+		}
+		opaque = t.Opaque()
+	default:
+		return ChannelImage{}, false, fmt.Errorf("unknown image format: %T", t)
+	}
+	return ChannelImage{
+		Width:  img.Bounds().Max.X,
+		Height: img.Bounds().Max.Y,
+		Buffer: b,
+	}, opaque, nil
 }
 
 func (c ChannelImage) ToRGBA() image.RGBA {
@@ -30,10 +61,10 @@ func (c ChannelImage) ToRGBA() image.RGBA {
 }
 
 func channelDecompose(img ChannelImage) (r, g, b, a ChannelImage) {
-	r = NewChannelImage(img.Width, img.Height)
-	g = NewChannelImage(img.Width, img.Height)
-	b = NewChannelImage(img.Width, img.Height)
-	a = NewChannelImage(img.Width, img.Height)
+	r = NewChannelImageWidthHeight(img.Width, img.Height)
+	g = NewChannelImageWidthHeight(img.Width, img.Height)
+	b = NewChannelImageWidthHeight(img.Width, img.Height)
+	a = NewChannelImageWidthHeight(img.Width, img.Height)
 	for w := 0; w < img.Width; w++ {
 		for h := 0; h < img.Height; h++ {
 			i := w + h*img.Width
@@ -72,7 +103,7 @@ func (c ChannelImage) extrapolation(px int) ChannelImage {
 	toIndex := func(w, h int) int {
 		return w + h*width
 	}
-	imageEx := NewChannelImage(width+(2*px), height+(2*px))
+	imageEx := NewChannelImageWidthHeight(width+(2*px), height+(2*px))
 	for h := 0; h < height+(px*2); h++ {
 		for w := 0; w < width+(px*2); w++ {
 			index := w + h*(width+(px*2))
@@ -120,7 +151,7 @@ func (c ChannelImage) resize(scale float64) ChannelImage {
 	height := c.Height
 	scaledWidth := int(math.Floor(float64(width)*scale + 0.5))   // Round
 	scaledHeight := int(math.Floor(float64(height)*scale + 0.5)) // Round
-	scaledImage := NewChannelImage(scaledWidth, scaledHeight)
+	scaledImage := NewChannelImageWidthHeight(scaledWidth, scaledHeight)
 	for w := 0; w < scaledWidth; w++ {
 		for h := 0; h < scaledHeight; h++ {
 			scaledIndex := w + (h * scaledWidth)
