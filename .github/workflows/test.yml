@@ -39,5 +39,6 @@ jobs:
 
       - name: Benchmark
         run: |
-          go test -v -bench ./...
+          cd engine
+          go test -v -bench .
         working-directory: src/github.com/ikawaha/waifu2x.go

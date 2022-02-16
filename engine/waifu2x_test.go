@@ -65,9 +65,9 @@ func BenchmarkWaifu(b *testing.B) {
 			modelDir = "photo"
 		}
 
-		scaleFn = fmt.Sprintf("models/%s/scale2.0x_model.json", modelDir)
+		scaleFn = fmt.Sprintf("model/%s/scale2.0x_model.json", modelDir)
 		if tt.noise > 0 {
-			noiseFn = fmt.Sprintf("models/%s/noise%d_model.json", modelDir, tt.noise)
+			noiseFn = fmt.Sprintf("model/%s/noise%d_model.json", modelDir, tt.noise)
 		}
 
 		model2x, err := LoadModelAssets(scaleFn)
