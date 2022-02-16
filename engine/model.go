@@ -1,4 +1,4 @@
-package model
+package engine
 
 import (
 	"embed"
@@ -37,10 +37,10 @@ func LoadModel(r io.Reader) (Model, error) {
 	return m, nil
 }
 
-//go:embed data/anime_style_art_rgb/* data/photo/*
+//go:embed model/anime_style_art_rgb/* model/photo/*
 var assets embed.FS
 
-func LoadModelFromAssets(path string) (Model, error) {
+func LoadModelAssets(path string) (Model, error) {
 	fsys, err := assets.Open(path)
 	if err != nil {
 		return nil, err
@@ -53,20 +53,20 @@ func LoadModelFromAssets(path string) (Model, error) {
 }
 
 const (
-	animeModelPath     = `data/anime_style_art_rgb/scale2.0x_model.json`
-	animeNoisePathTmpl = `data/anime_style_art_rgb/noise%d_model.json`
-	photoModelPath     = `data/photo/scale2.0x_model.json`
-	photoNoisePathTmpl = `data/photo/noise%d_model.json`
+	animeModelPath     = `model/anime_style_art_rgb/scale2.0x_model.json`
+	animeNoisePathTmpl = `model/anime_style_art_rgb/noise%d_model.json`
+	photoModelPath     = `model/photo/scale2.0x_model.json`
+	photoNoisePathTmpl = `model/photo/noise%d_model.json`
 )
 
-type ModelType int
+type Mode int
 
 const (
-	Anime ModelType = iota + 1
+	Anime Mode = iota + 1
 	Photo
 )
 
-func (t ModelType) String() string {
+func (t Mode) String() string {
 	switch t {
 	case Anime:
 		return "anime"
@@ -81,7 +81,7 @@ type ModelSet struct {
 	NoiseModel   Model
 }
 
-func newAssetModelSet(t ModelType, noiseLevel int) (*ModelSet, error) {
+func newAssetModelSet(t Mode, noiseLevel int) (*ModelSet, error) {
 	if noiseLevel < 0 || noiseLevel > 3 {
 		return nil, fmt.Errorf("invalid noise level: 0...3 but %d", noiseLevel)
 	}
@@ -97,12 +97,12 @@ func newAssetModelSet(t ModelType, noiseLevel int) (*ModelSet, error) {
 	var noise Model
 	if noiseLevel > 0 {
 		var err error
-		noise, err = LoadModelFromAssets(fmt.Sprintf(noiseT, noiseLevel))
+		noise, err = LoadModelAssets(fmt.Sprintf(noiseT, noiseLevel))
 		if err != nil {
 			return nil, fmt.Errorf("load noise model error: %w", err)
 		}
 	}
-	scale, err := LoadModelFromAssets(modelPath)
+	scale, err := LoadModelAssets(modelPath)
 	if err != nil {
 		return nil, fmt.Errorf("load scale model error: %w", err)
 	}

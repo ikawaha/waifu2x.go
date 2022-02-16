@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"image"
 	"image/jpeg"
@@ -9,7 +10,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/puhitaku/go-waifu2x/model"
+	"github.com/puhitaku/go-waifu2x/engine"
 )
 
 func run(opt *option) error {
@@ -32,28 +33,22 @@ func run(opt *option) error {
 		}
 	}
 
-	pix, enableAlphaUpscaling, err := model.ImageToPix(img)
+	mode := engine.Anime
+	switch opt.mode {
+	case "anime":
+		mode = engine.Anime
+	case "photo":
+		mode = engine.Photo
+	}
+	w2x, err := engine.NewWaifu2x(mode, opt.noiseReduction, engine.Parallel(8), engine.Verbose())
 	if err != nil {
-		return fmt.Errorf("failed to extract pix from the image: %w", err)
+		return err
 	}
 
-	ms, err := modelSet(opt.mode, opt.noiseReduction)
+	rgba, err := w2x.ScaleUp(context.TODO(), img, opt.scale)
 	if err != nil {
-		return fmt.Errorf("failed to load models: %w", err)
+		return fmt.Errorf("calc error: %w", err)
 	}
-
-	w2x := model.Waifu2x{
-		Scale2xModel: ms.Scale2xModel,
-		NoiseModel:   ms.NoiseModel,
-		Scale:        opt.scale,
-		Jobs:         opt.jobs,
-	}
-	ci := model.ChannelImage{
-		Width:  img.Bounds().Max.X,
-		Height: img.Bounds().Max.Y,
-		Buffer: pix,
-	}
-	ci = w2x.Calc(ci, enableAlphaUpscaling)
 
 	var w io.Writer = os.Stdout
 	if opt.output != "" {
@@ -64,19 +59,8 @@ func run(opt *option) error {
 		defer fp.Close()
 		w = fp
 	}
-	rgba := ci.ToRGBA()
 	if err := png.Encode(w, &rgba); err != nil {
 		panic(err)
 	}
 	return nil
-}
-
-func modelSet(mode string, noiseLevel int) (*model.ModelSet, error) {
-	switch mode {
-	case modeAnime:
-		return model.NewAnimeModelSet(noiseLevel)
-	case modePhoto:
-		return model.NewPhotoModelSet(noiseLevel)
-	}
-	return nil, fmt.Errorf("unknown model type: %s", mode)
 }

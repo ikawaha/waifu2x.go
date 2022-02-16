@@ -1,6 +1,7 @@
-package model
+package engine
 
 import (
+	"context"
 	"fmt"
 	"image"
 	"image/png"
@@ -69,25 +70,24 @@ func BenchmarkWaifu(b *testing.B) {
 			noiseFn = fmt.Sprintf("models/%s/noise%d_model.json", modelDir, tt.noise)
 		}
 
-		model2x, err := LoadModelFromAssets(scaleFn)
+		model2x, err := LoadModelAssets(scaleFn)
 		if err != nil {
 			b.Fatalf("failed to load scale2x model: %s", err)
 		}
 
 		var noise Model
 		if tt.noise > 0 {
-			noise, err = LoadModelFromAssets(noiseFn)
+			noise, err = LoadModelAssets(noiseFn)
 			if err != nil {
 				b.Fatalf("failed to load noise model: %s", err)
 			}
 		}
 
 		b.Run(tt.name, func(b *testing.B) {
-			model := Waifu2x{
-				Scale2xModel: model2x,
-				NoiseModel:   noise,
-				Scale:        2,
-				Jobs:         runtime.NumCPU(),
+			w2x := Waifu2x{
+				scaleModel: model2x,
+				noiseModel: noise,
+				parallel:   runtime.NumCPU(),
 			}
 
 			b.ResetTimer()
@@ -96,7 +96,7 @@ func BenchmarkWaifu(b *testing.B) {
 				Height: rgba.Bounds().Max.Y,
 				Buffer: rgba.Pix,
 			}
-			model.Calc(img, tt.alpha)
+			w2x.convertChannelImage(context.TODO(), img, tt.alpha, 2)
 		})
 	}
 }
@@ -108,42 +108,42 @@ func TestAllCombinations(t *testing.T) {
 		noise int
 	}{
 		{
-			name:  "Anime, noise reduction level 0",
+			name:  "Anime, noiseModel reduction level 0",
 			mode:  modeAnime,
 			noise: 0,
 		},
 		{
-			name:  "Anime, noise reduction level 1",
+			name:  "Anime, noiseModel reduction level 1",
 			mode:  modeAnime,
 			noise: 1,
 		},
 		{
-			name:  "Anime, noise reduction level 2",
+			name:  "Anime, noiseModel reduction level 2",
 			mode:  modeAnime,
 			noise: 2,
 		},
 		{
-			name:  "Anime, noise reduction level 3",
+			name:  "Anime, noiseModel reduction level 3",
 			mode:  modeAnime,
 			noise: 3,
 		},
 		{
-			name:  "Photo, noise reduction level 0",
+			name:  "Photo, noiseModel reduction level 0",
 			mode:  modePhoto,
 			noise: 0,
 		},
 		{
-			name:  "Photo, noise reduction level 1",
+			name:  "Photo, noiseModel reduction level 1",
 			mode:  modePhoto,
 			noise: 1,
 		},
 		{
-			name:  "Photo, noise reduction level 2",
+			name:  "Photo, noiseModel reduction level 2",
 			mode:  modePhoto,
 			noise: 2,
 		},
 		{
-			name:  "Photo, noise reduction level 3",
+			name:  "Photo, noiseModel reduction level 3",
 			mode:  modePhoto,
 			noise: 3,
 		},
@@ -176,36 +176,35 @@ func TestAllCombinations(t *testing.T) {
 				modelDir = "photo"
 			}
 
-			scaleFn = fmt.Sprintf("data/%s/scale2.0x_model.json", modelDir)
+			scaleFn = fmt.Sprintf("model/%s/scale2.0x_model.json", modelDir)
 			if tt.noise > 0 {
-				noiseFn = fmt.Sprintf("data/%s/noise%d_model.json", modelDir, tt.noise)
+				noiseFn = fmt.Sprintf("model/%s/noise%d_model.json", modelDir, tt.noise)
 			}
 
-			model2x, err := LoadModelFromAssets(scaleFn)
+			model2x, err := LoadModelAssets(scaleFn)
 			if err != nil {
 				t.Fatalf("failed to load scale2x model: %s", err)
 			}
 
 			var noise Model
 			if tt.noise > 0 {
-				noise, err = LoadModelFromAssets(noiseFn)
+				noise, err = LoadModelAssets(noiseFn)
 				if err != nil {
 					t.Fatalf("failed to load noise model: %s", err)
 				}
 			}
 
-			model := Waifu2x{
-				Scale2xModel: model2x,
-				NoiseModel:   noise,
-				Scale:        2,
-				Jobs:         runtime.NumCPU(),
+			w2x := Waifu2x{
+				scaleModel: model2x,
+				noiseModel: noise,
+				parallel:   runtime.NumCPU(),
 			}
 			img := ChannelImage{
 				Buffer: rgba.Pix,
 				Width:  rgba.Bounds().Max.X,
 				Height: rgba.Bounds().Max.Y,
 			}
-			model.Calc(img, true)
+			w2x.convertChannelImage(context.TODO(), img, true, 2)
 		})
 	}
 }

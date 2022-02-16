@@ -1,4 +1,4 @@
-package model
+package engine
 
 import (
 	"fmt"
@@ -6,12 +6,14 @@ import (
 	"math"
 )
 
+// ChannelImage represents a discrete image.
 type ChannelImage struct {
 	Width  int
 	Height int
 	Buffer []uint8
 }
 
+// NewChannelImageWidthHeight returns a channel image of specific width and height.
 func NewChannelImageWidthHeight(width, height int) ChannelImage {
 	return ChannelImage{
 		Width:  width,
@@ -20,6 +22,7 @@ func NewChannelImageWidthHeight(width, height int) ChannelImage {
 	}
 }
 
+// NewChannelImage returns a channel image corresponding to the specified image.
 func NewChannelImage(img image.Image) (ChannelImage, bool, error) {
 	var (
 		b      []uint8
@@ -51,7 +54,23 @@ func NewChannelImage(img image.Image) (ChannelImage, bool, error) {
 	}, opaque, nil
 }
 
-func (c ChannelImage) ToRGBA() image.RGBA {
+// NewDenormalizedChannelImage returns a channel image corresponding to the image plane.
+func NewDenormalizedChannelImage(p ImagePlane) ChannelImage {
+	img := NewChannelImageWidthHeight(p.Width, p.Height)
+	for i := range p.Buffer {
+		v := int(math.Round(p.Buffer[i] * 255.0))
+		if v < 0 {
+			v = 0
+		} else if v > 255 {
+			v = 255
+		}
+		img.Buffer[i] = uint8(v)
+	}
+	return img
+}
+
+// ImageRGBA converts the channel image to an image.RGBA and return it.
+func (c ChannelImage) ImageRGBA() image.RGBA {
 	r := image.Rect(0, 0, c.Width, c.Height)
 	return image.RGBA{
 		Pix:    c.Buffer,
@@ -60,7 +79,8 @@ func (c ChannelImage) ToRGBA() image.RGBA {
 	}
 }
 
-func channelDecompose(img ChannelImage) (r, g, b, a ChannelImage) {
+// ChannelDecompose decomposes a channel image to R, G, B and Alpha channels.
+func ChannelDecompose(img ChannelImage) (r, g, b, a ChannelImage) {
 	r = NewChannelImageWidthHeight(img.Width, img.Height)
 	g = NewChannelImageWidthHeight(img.Width, img.Height)
 	b = NewChannelImageWidthHeight(img.Width, img.Height)
@@ -74,21 +94,19 @@ func channelDecompose(img ChannelImage) (r, g, b, a ChannelImage) {
 			a.Buffer[i] = img.Buffer[(w*4)+(h*img.Width*4)+3]
 		}
 	}
-	return
+	return r, g, b, a
 }
 
-func channelCompose(imageR, imageG, imageB, imageA ChannelImage) ChannelImage {
-	width := imageR.Width
-	height := imageR.Height
+// ChannelCompose composes R, G, B and Alpha channels to the one channel image.
+func ChannelCompose(r, g, b, a ChannelImage) ChannelImage {
+	width := r.Width
+	height := r.Height
 	img := make([]uint8, width*height*4)
-	if width*height != len(imageR.Buffer) {
-		panic(fmt.Errorf("channelCompose() buflen:%d, width*height:%d", len(imageR.Buffer), width*height))
-	}
 	for i := 0; i < width*height; i++ {
-		img[i*4] = imageR.Buffer[i]
-		img[i*4+1] = imageG.Buffer[i]
-		img[i*4+2] = imageB.Buffer[i]
-		img[i*4+3] = imageA.Buffer[i]
+		img[i*4] = r.Buffer[i]
+		img[i*4+1] = g.Buffer[i]
+		img[i*4+2] = b.Buffer[i]
+		img[i*4+3] = a.Buffer[i]
 	}
 	return ChannelImage{
 		Width:  width,
@@ -97,7 +115,8 @@ func channelCompose(imageR, imageG, imageB, imageA ChannelImage) ChannelImage {
 	}
 }
 
-func (c ChannelImage) extrapolation(px int) ChannelImage {
+// Extrapolation calculates an extrapolation algorithm.
+func (c ChannelImage) Extrapolation(px int) ChannelImage {
 	width := c.Width
 	height := c.Height
 	toIndex := func(w, h int) int {
@@ -146,7 +165,11 @@ func (c ChannelImage) extrapolation(px int) ChannelImage {
 	return imageEx
 }
 
-func (c ChannelImage) resize(scale float64) ChannelImage {
+// Resize returns a resized image.
+func (c ChannelImage) Resize(scale float64) ChannelImage {
+	if scale == 1.0 {
+		return c
+	}
 	width := c.Width
 	height := c.Height
 	scaledWidth := int(math.Round(float64(width) * scale))
