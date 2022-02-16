@@ -8,7 +8,7 @@ import (
 	"os"
 )
 
-// Param represents parameters of a model.
+// Param represents a parameter of the model.
 type Param struct {
 	Bias         []float64       `json:"bias"`         // バイアス
 	KW           int             `json:"kW"`           // フィルタの幅
