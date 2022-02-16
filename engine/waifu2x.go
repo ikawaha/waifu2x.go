@@ -12,8 +12,10 @@ import (
 	"golang.org/x/sync/semaphore"
 )
 
+// Option represents an option of waifu2x.
 type Option func(w *Waifu2x) error
 
+// Parallel is the option that specifies the number of concurrency.
 func Parallel(p int) Option {
 	return func(w *Waifu2x) error {
 		w.parallel = p
@@ -21,6 +23,7 @@ func Parallel(p int) Option {
 	}
 }
 
+// Verbose is the verbose option.
 func Verbose() Option {
 	return func(w *Waifu2x) error {
 		w.verbose = true
@@ -28,6 +31,7 @@ func Verbose() Option {
 	}
 }
 
+// Output is the option that sets the output destination.
 func Output(w io.Writer) Option {
 	return func(w2x *Waifu2x) error {
 		w2x.output = w
@@ -35,6 +39,7 @@ func Output(w io.Writer) Option {
 	}
 }
 
+// Waifu2x is the main structure for executing the waifu2x algorithm.
 type Waifu2x struct {
 	scaleModel Model
 	noiseModel Model
@@ -43,6 +48,7 @@ type Waifu2x struct {
 	output     io.Writer
 }
 
+// NewWaifu2x creates a Waifu2x structure.
 func NewWaifu2x(mode Mode, noise int, opts ...Option) (*Waifu2x, error) {
 	m, err := NewAssetModelSet(mode, noise)
 	if err != nil {
@@ -75,6 +81,7 @@ func (w Waifu2x) println(a ...interface{}) {
 	}
 }
 
+// ScaleUp scales up the image.
 func (w Waifu2x) ScaleUp(ctx context.Context, img image.Image, scale float64) (image.RGBA, error) {
 	ci, opaque, err := NewChannelImage(img)
 	if err != nil {
