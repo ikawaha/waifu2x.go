@@ -44,7 +44,7 @@ type Waifu2x struct {
 }
 
 func NewWaifu2x(mode Mode, noise int, opts ...Option) (*Waifu2x, error) {
-	m, err := newAssetModelSet(mode, noise)
+	m, err := NewAssetModelSet(mode, noise)
 	if err != nil {
 		return nil, err
 	}

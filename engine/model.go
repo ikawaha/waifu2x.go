@@ -8,6 +8,7 @@ import (
 	"os"
 )
 
+// Param represents parameters of a model.
 type Param struct {
 	Bias         []float64       `json:"bias"`         // バイアス
 	KW           int             `json:"kW"`           // フィルタの幅
@@ -17,8 +18,10 @@ type Param struct {
 	NOutputPlane int             `json:"nOutputPlane"` // 出力平面数
 }
 
+// Model represents a trained model.
 type Model []Param
 
+// LoadModelFile loads a trained model from the specified file.
 func LoadModelFile(path string) (Model, error) {
 	fp, err := os.Open(path)
 	if err != nil {
@@ -28,6 +31,7 @@ func LoadModelFile(path string) (Model, error) {
 	return LoadModel(fp)
 }
 
+// LoadModel loads a trained model from the io.Reader.
 func LoadModel(r io.Reader) (Model, error) {
 	dec := json.NewDecoder(r)
 	var m Model
@@ -40,6 +44,7 @@ func LoadModel(r io.Reader) (Model, error) {
 //go:embed model/anime_style_art_rgb/* model/photo/*
 var assets embed.FS
 
+// LoadModelAssets loads a trained model from assets.
 func LoadModelAssets(path string) (Model, error) {
 	fsys, err := assets.Open(path)
 	if err != nil {
@@ -59,13 +64,17 @@ const (
 	photoNoisePathTmpl = `model/photo/noise%d_model.json`
 )
 
+// Mode is the type of trained models.
 type Mode int
 
 const (
+	// Anime model type.
 	Anime Mode = iota + 1
+	// Photo model type.
 	Photo
 )
 
+// String returns string representation of a mode.
 func (t Mode) String() string {
 	switch t {
 	case Anime:
@@ -76,12 +85,14 @@ func (t Mode) String() string {
 	return fmt.Sprintf("unknown type=%d", t)
 }
 
+// ModelSet is a set of trained models.
 type ModelSet struct {
 	Scale2xModel Model
 	NoiseModel   Model
 }
 
-func newAssetModelSet(t Mode, noiseLevel int) (*ModelSet, error) {
+// NewAssetModelSet returns a set of trained models loaded from assets.
+func NewAssetModelSet(t Mode, noiseLevel int) (*ModelSet, error) {
 	if noiseLevel < 0 || noiseLevel > 3 {
 		return nil, fmt.Errorf("invalid noise level: 0...3 but %d", noiseLevel)
 	}
@@ -110,12 +121,4 @@ func newAssetModelSet(t Mode, noiseLevel int) (*ModelSet, error) {
 		Scale2xModel: scale,
 		NoiseModel:   noise,
 	}, nil
-}
-
-func NewAnimeModelSet(noiseLevel int) (*ModelSet, error) {
-	return newAssetModelSet(Anime, noiseLevel)
-}
-
-func NewPhotoModelSet(noiseLevel int) (*ModelSet, error) {
-	return newAssetModelSet(Photo, noiseLevel)
 }
