@@ -172,15 +172,14 @@ func (w Waifu2x) convertRGB(ctx context.Context, imageR, imageG, imageB ChannelI
 
 	w.printf(fmtStr, 0, len(inputBlocks), 0.0)
 
-	for b := 0; b < len(inputBlocks); b++ {
+	for b := range inputBlocks {
 		err := sem.Acquire(ctx, 1)
 		if err != nil {
 			panic(fmt.Sprintf("failed to acquire the semaphore: %s", err))
 		}
 		wg.Add(1)
-		cb := b
 
-		go func() {
+		go func(cb int) {
 			if cb >= 10 {
 				w.printf("\x1b[2K\r"+fmtStr, cb+1, len(inputBlocks), float32(cb+1)/float32(len(inputBlocks))*100)
 			}
@@ -205,7 +204,7 @@ func (w Waifu2x) convertRGB(ctx context.Context, imageR, imageG, imageB ChannelI
 			outputLock.Unlock()
 			sem.Release(1)
 			wg.Done()
-		}()
+		}(b)
 	}
 
 	wg.Wait()
