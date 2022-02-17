@@ -59,7 +59,7 @@ func (o *option) parse(args []string) (err error) {
 		return fmt.Errorf("invalid argument: %v", nonFlag)
 	}
 	if o.input == "" {
-		return fmt.Errorf("input file is empty\n")
+		return fmt.Errorf("input file is empty")
 	}
 	if o.scale < 1.0 {
 		return fmt.Errorf("invalid scale, %v > 1", o.scale)
@@ -76,23 +76,9 @@ func (o *option) parse(args []string) (err error) {
 	return
 }
 
-func Usage() {
-	fmt.Printf(usageMessage, commandName)
-}
-
-func PrintDefaults(eh flag.ErrorHandling) {
-	o := newOption(os.Stderr, eh)
-	o.flagSet.PrintDefaults()
-}
-
 func main() {
 	opt := newOption(os.Stderr, flag.ExitOnError)
-	if err := opt.parse(os.Args[1:]); err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
-		Usage()
-		PrintDefaults(flag.ExitOnError)
-		os.Exit(1)
-	}
+	_ = opt.parse(os.Args[1:])
 	if err := run(opt); err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
