@@ -50,9 +50,9 @@ func newOption(w io.Writer, eh flag.ErrorHandling) (o *option) {
 	return
 }
 
-func (o *option) parse(args []string) (err error) {
-	if err = o.flagSet.Parse(args); err != nil {
-		return
+func (o *option) parse(args []string) error {
+	if err := o.flagSet.Parse(args); err != nil {
+		return err
 	}
 	// validations
 	if nonFlag := o.flagSet.Args(); len(nonFlag) != 0 {
@@ -73,12 +73,20 @@ func (o *option) parse(args []string) (err error) {
 	if o.mode != modeAnime && o.mode != modePhoto {
 		return fmt.Errorf("invalid mode, choose from 'anime' or 'photo'")
 	}
-	return
+	return nil
+}
+
+func usage() {
+	fmt.Printf(usageMessage, commandName)
 }
 
 func main() {
-	opt := newOption(os.Stderr, flag.ExitOnError)
-	_ = opt.parse(os.Args[1:])
+	opt := newOption(os.Stderr, flag.ContinueOnError)
+	if err := opt.parse(os.Args[1:]); err != nil {
+		usage()
+		opt.flagSet.PrintDefaults()
+		os.Exit(2)
+	}
 	if err := run(opt); err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
