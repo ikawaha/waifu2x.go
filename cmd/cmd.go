@@ -1,11 +1,18 @@
-package main
+package cmd
 
 import (
+	"context"
 	"flag"
 	"fmt"
+	"image"
+	"image/jpeg"
+	"image/png"
 	"io"
 	"os"
 	"runtime"
+	"strings"
+
+	"github.com/puhitaku/go-waifu2x/engine"
 )
 
 const (
@@ -76,20 +83,65 @@ func (o *option) parse(args []string) error {
 	return nil
 }
 
-func usage() {
+func Usage() {
 	fmt.Printf(usageMessage, commandName)
+	opt := newOption(os.Stdout, flag.ContinueOnError)
+	opt.flagSet.PrintDefaults()
 }
 
-func main() {
+func Run(args []string) error {
 	opt := newOption(os.Stderr, flag.ContinueOnError)
-	if err := opt.parse(os.Args[1:]); err != nil {
-		usage()
-		opt.flagSet.PrintDefaults()
-		os.Exit(2)
+	if err := opt.parse(args); err != nil {
+		return err
 	}
-	if err := run(opt); err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		os.Exit(1)
+
+	fp, err := os.Open(opt.input)
+	if err != nil {
+		return fmt.Errorf("input file %v, %w", opt.input, err)
 	}
-	os.Exit(0)
+	defer fp.Close()
+
+	var img image.Image
+	if strings.HasSuffix(fp.Name(), "jpg") || strings.HasSuffix(fp.Name(), "jpeg") {
+		img, err = jpeg.Decode(fp)
+		if err != nil {
+			return fmt.Errorf("load file %v, %w", opt.input, err)
+		}
+	} else if strings.HasSuffix(fp.Name(), "png") {
+		img, err = png.Decode(fp)
+		if err != nil {
+			return fmt.Errorf("load file %v, %w", opt.input, err)
+		}
+	}
+
+	mode := engine.Anime
+	switch opt.mode {
+	case "anime":
+		mode = engine.Anime
+	case "photo":
+		mode = engine.Photo
+	}
+	w2x, err := engine.NewWaifu2x(mode, opt.noiseReduction, engine.Parallel(8), engine.Verbose())
+	if err != nil {
+		return err
+	}
+
+	rgba, err := w2x.ScaleUp(context.TODO(), img, opt.scale)
+	if err != nil {
+		return fmt.Errorf("calc error: %w", err)
+	}
+
+	var w io.Writer = os.Stdout
+	if opt.output != "" {
+		fp, err := os.Create(opt.output)
+		if err != nil {
+			return fmt.Errorf("output file, %w", err)
+		}
+		defer fp.Close()
+		w = fp
+	}
+	if err := png.Encode(w, &rgba); err != nil {
+		panic(err)
+	}
+	return nil
 }
