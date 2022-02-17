@@ -10,7 +10,6 @@ waifu2x-js: https://github.com/takuyaa/waifu2x-js
 
 Changes 
 ---
-* 
 * 2022-02-09: Imported changes from [go-waifu2x](https://github.com/puhitaku/go-waifu2x), a fork of this repository. This is an excellent job done by @puhitaku and @orisano. It is 14x faster than the original in the non-GPU case.
 
 Note
