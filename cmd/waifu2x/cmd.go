@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"image"
 	"image/jpeg"
@@ -9,7 +10,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/puhitaku/go-waifu2x"
+	"github.com/puhitaku/go-waifu2x/engine"
 )
 
 func run(opt *option) error {
@@ -32,48 +33,22 @@ func run(opt *option) error {
 		}
 	}
 
-	pix, enableAlphaUpscaling, err := waifu2x.ImageToPix(img)
-	if err != nil {
-		return fmt.Errorf("failed to extract pix from the image: %w", err)
-	}
-
-	var modelDir string
-	var scaleFn string
-	var noiseFn string
-
+	mode := engine.Anime
 	switch opt.mode {
-	case modeAnime:
-		modelDir = "anime_style_art_rgb"
-	case modePhoto:
-		modelDir = "photo"
+	case "anime":
+		mode = engine.Anime
+	case "photo":
+		mode = engine.Photo
 	}
-
-	scaleFn = fmt.Sprintf("models/%s/scale2.0x_model.json", modelDir)
-	if opt.noiseReduction > 0 {
-		noiseFn = fmt.Sprintf("models/%s/noise%d_model.json", modelDir, opt.noiseReduction)
-	}
-
-	model2x, err := waifu2x.LoadModelFromAssets(scaleFn)
+	w2x, err := engine.NewWaifu2x(mode, opt.noiseReduction, engine.Parallel(8), engine.Verbose())
 	if err != nil {
-		return fmt.Errorf("failed to load scale2x model: %w", err)
+		return err
 	}
 
-	var noise *waifu2x.Model
-	if opt.noiseReduction > 0 {
-		noise, err = waifu2x.LoadModelFromAssets(noiseFn)
-		if err != nil {
-			return fmt.Errorf("failed to load noise model: %w", err)
-		}
+	rgba, err := w2x.ScaleUp(context.TODO(), img, opt.scale)
+	if err != nil {
+		return fmt.Errorf("calc error: %w", err)
 	}
-
-	model := waifu2x.Waifu2x{
-		Scale2xModel: model2x,
-		NoiseModel:   noise,
-		Scale:        opt.scale,
-		Jobs:         opt.jobs,
-	}
-
-	pix, rect := model.Calc(pix, img.Bounds().Max.X, img.Bounds().Max.Y, enableAlphaUpscaling)
 
 	var w io.Writer = os.Stdout
 	if opt.output != "" {
@@ -84,7 +59,7 @@ func run(opt *option) error {
 		defer fp.Close()
 		w = fp
 	}
-	if err := png.Encode(w, waifu2x.PixToRGBA(pix, rect)); err != nil {
+	if err := png.Encode(w, &rgba); err != nil {
 		panic(err)
 	}
 	return nil
