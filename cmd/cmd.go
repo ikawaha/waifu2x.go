@@ -83,12 +83,14 @@ func (o *option) parse(args []string) error {
 	return nil
 }
 
+// Usage shows a usage message.
 func Usage() {
 	fmt.Printf(usageMessage, commandName)
 	opt := newOption(os.Stdout, flag.ContinueOnError)
 	opt.flagSet.PrintDefaults()
 }
 
+// Run executes the waifu2x command.
 func Run(args []string) error {
 	opt := newOption(os.Stderr, flag.ContinueOnError)
 	if err := opt.parse(args); err != nil {
