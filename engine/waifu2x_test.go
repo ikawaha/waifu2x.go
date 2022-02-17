@@ -96,7 +96,9 @@ func BenchmarkWaifu(b *testing.B) {
 				Height: rgba.Bounds().Max.Y,
 				Buffer: rgba.Pix,
 			}
-			w2x.convertChannelImage(context.TODO(), img, tt.alpha, 2)
+			if _, err := w2x.convertChannelImage(context.TODO(), img, tt.alpha, 2); err != nil {
+				b.Errorf("unexpected error: %v", err)
+			}
 		})
 	}
 }
@@ -204,7 +206,9 @@ func TestAllCombinations(t *testing.T) {
 				Width:  rgba.Bounds().Max.X,
 				Height: rgba.Bounds().Max.Y,
 			}
-			w2x.convertChannelImage(context.TODO(), img, true, 2)
+			if _, err := w2x.convertChannelImage(context.TODO(), img, true, 2); err != nil {
+				t.Errorf("unexpected error: %v", err)
+			}
 		})
 	}
 }
