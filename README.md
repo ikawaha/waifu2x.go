@@ -8,14 +8,23 @@ waifu2x.go is a clone of waifu2x-js.
 
 waifu2x-js: https://github.com/takuyaa/waifu2x-js
 
+Install
+---
+
+```shell
+go install github.com/ikawaha/waifu2x.go@latest
+```
+
+Changes 
+---
+* 2022-02-09: Imported changes from [go-waifu2x](https://github.com/puhitaku/go-waifu2x), a fork of this repository. This is an excellent job done by @puhitaku and @orisano. It is 14x faster than the original in the non-GPU case.
+
 Note
 ---
 
-This software includes a binary and/or source version of model data from waifu2x
-which can be obtained from https://github.com/nagadomi/waifu2x.
+This software includes a binary and/or source version of model data from waifu2x which can be obtained from https://github.com/nagadomi/waifu2x.
 
 License
 ---
 
-[MIT License](https://opensource.org/licenses/MIT)
-
+MIT
