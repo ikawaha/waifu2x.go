@@ -17,7 +17,7 @@ import (
 
 const (
 	commandName  = "waifu2x"
-	usageMessage = "%s -i|--input <input_file> [-o|--output <output_file>] [-s|--scale <scale_factor>] [-j|--jobs <n>] [-n|--noise <n>] [-m|--mode (anime|photo)]\n"
+	usageMessage = "%s (-i|--input) <input_file> [-o|--output <output_file>] [-s|--scale <scale_factor>] [-j|--jobs <n>] [-n|--noise <n>] [-m|--mode (anime|photo)]\n"
 )
 
 const (
