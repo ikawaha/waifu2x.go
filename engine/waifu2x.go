@@ -8,8 +8,6 @@ import (
 	"math"
 	"os"
 	"sync"
-
-	"golang.org/x/sync/semaphore"
 )
 
 // Option represents an option of waifu2x.
@@ -160,24 +158,17 @@ func (w Waifu2x) convertRGB(ctx context.Context, imageR, imageG, imageB ChannelI
 
 	// init W
 	W := typeW(model)
-
-	sem := semaphore.NewWeighted(int64(jobs))
-	wg := sync.WaitGroup{}
 	outputBlocks := make([][]ImagePlane, len(inputBlocks))
 
 	digits := int(math.Log10(float64(len(inputBlocks)))) + 2
 	fmtStr := fmt.Sprintf("%%%dd/%%%dd", digits, digits) + " (%.1f%%)"
-
 	w.printf(fmtStr, 0, len(inputBlocks), 0.0)
-
+	
+	wg := sync.WaitGroup{}
 	for i := range inputBlocks {
-		err := sem.Acquire(ctx, 1)
-		if err != nil {
-			panic(fmt.Sprintf("failed to acquire the semaphore: %s", err))
-		}
 		wg.Add(1)
-
 		go func(i int) {
+			defer wg.Done()
 			if i >= 10 {
 				w.printf("\x1b[2K\r"+fmtStr, i+1, len(inputBlocks), float32(i+1)/float32(len(inputBlocks))*100)
 			}
@@ -194,12 +185,10 @@ func (w Waifu2x) convertRGB(ctx context.Context, imageR, imageG, imageB ChannelI
 				inputBlocks[i] = nil
 			}
 			outputBlocks[i] = outputBlock
-			sem.Release(1)
-			wg.Done()
 		}(i)
 	}
-
 	wg.Wait()
+
 	w.println()
 	inputBlocks = nil
 
