@@ -161,8 +161,6 @@ func (w Waifu2x) convertRGB(ctx context.Context, imageR, imageG, imageB ChannelI
 	// init W
 	W := typeW(model)
 
-	inputLock := &sync.Mutex{}
-	outputLock := &sync.Mutex{}
 	sem := semaphore.NewWeighted(int64(jobs))
 	wg := sync.WaitGroup{}
 	outputBlocks := make([][]ImagePlane, len(inputBlocks))
@@ -172,19 +170,18 @@ func (w Waifu2x) convertRGB(ctx context.Context, imageR, imageG, imageB ChannelI
 
 	w.printf(fmtStr, 0, len(inputBlocks), 0.0)
 
-	for b := range inputBlocks {
+	for i := range inputBlocks {
 		err := sem.Acquire(ctx, 1)
 		if err != nil {
 			panic(fmt.Sprintf("failed to acquire the semaphore: %s", err))
 		}
 		wg.Add(1)
 
-		go func(cb int) {
-			if cb >= 10 {
-				w.printf("\x1b[2K\r"+fmtStr, cb+1, len(inputBlocks), float32(cb+1)/float32(len(inputBlocks))*100)
+		go func(i int) {
+			if i >= 10 {
+				w.printf("\x1b[2K\r"+fmtStr, i+1, len(inputBlocks), float32(i+1)/float32(len(inputBlocks))*100)
 			}
-
-			inputBlock := inputBlocks[cb]
+			inputBlock := inputBlocks[i]
 			var outputBlock []ImagePlane
 			for l := 0; l < len(model); l++ {
 				nOutputPlane := model[l].NOutputPlane
@@ -194,17 +191,12 @@ func (w Waifu2x) convertRGB(ctx context.Context, imageR, imageG, imageB ChannelI
 				}
 				outputBlock = convolution(inputBlock, W[l], nOutputPlane, model[l].Bias)
 				inputBlock = outputBlock // propagate output plane to next layer input
-
-				inputLock.Lock()
-				inputBlocks[cb] = nil
-				inputLock.Unlock()
+				inputBlocks[i] = nil
 			}
-			outputLock.Lock()
-			outputBlocks[cb] = outputBlock
-			outputLock.Unlock()
+			outputBlocks[i] = outputBlock
 			sem.Release(1)
 			wg.Done()
-		}(b)
+		}(i)
 	}
 
 	wg.Wait()
