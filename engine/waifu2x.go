@@ -163,7 +163,7 @@ func (w Waifu2x) convertRGB(ctx context.Context, imageR, imageG, imageB ChannelI
 	digits := int(math.Log10(float64(len(inputBlocks)))) + 2
 	fmtStr := fmt.Sprintf("%%%dd/%%%dd", digits, digits) + " (%.1f%%)"
 	w.printf(fmtStr, 0, len(inputBlocks), 0.0)
-	
+
 	wg := sync.WaitGroup{}
 	for i := range inputBlocks {
 		wg.Add(1)
@@ -177,9 +177,6 @@ func (w Waifu2x) convertRGB(ctx context.Context, imageR, imageG, imageB ChannelI
 			for l := 0; l < len(model); l++ {
 				nOutputPlane := model[l].NOutputPlane
 				// convolution
-				if model == nil {
-					panic("xxx model nil")
-				}
 				outputBlock = convolution(inputBlock, W[l], nOutputPlane, model[l].Bias)
 				inputBlock = outputBlock // propagate output plane to next layer input
 				inputBlocks[i] = nil
