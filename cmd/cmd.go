@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
 	"flag"
 	"fmt"
@@ -9,8 +10,6 @@ import (
 	"image/png"
 	"io"
 	"os"
-	"runtime"
-	"strings"
 
 	"github.com/ikawaha/waifu2x.go/engine"
 )
@@ -26,13 +25,15 @@ const (
 )
 
 type option struct {
+	// flagSet args
 	input          string
 	output         string
 	scale          float64
-	jobs           int
 	noiseReduction int
-	mode           string
-	flagSet        *flag.FlagSet
+	mode_          string
+	// option values
+	mode    engine.Mode
+	flagSet *flag.FlagSet
 }
 
 func newOption(w io.Writer, eh flag.ErrorHandling) (o *option) {
@@ -47,12 +48,10 @@ func newOption(w io.Writer, eh flag.ErrorHandling) (o *option) {
 	o.flagSet.StringVar(&o.output, "output", "", "output file (default stdout)")
 	o.flagSet.Float64Var(&o.scale, "s", 2.0, "scale multiplier >= 1.0 (short)")
 	o.flagSet.Float64Var(&o.scale, "scale", 2.0, "scale multiplier >= 1.0")
-	o.flagSet.IntVar(&o.jobs, "j", runtime.NumCPU(), "# of goroutines (short)")
-	o.flagSet.IntVar(&o.jobs, "jobs", runtime.NumCPU(), "# of goroutines")
 	o.flagSet.IntVar(&o.noiseReduction, "n", 0, "noise reduction level 0 <= n <= 3 (short)")
 	o.flagSet.IntVar(&o.noiseReduction, "noise", 0, "noise reduction level 0 <= n <= 3")
-	o.flagSet.StringVar(&o.mode, "m", modeAnime, "waifu2x mode, choose from 'anime' and 'photo' (short) (default anime)")
-	o.flagSet.StringVar(&o.mode, "mode", modeAnime, "waifu2x mode, choose from 'anime' and 'photo' (default anime)")
+	o.flagSet.StringVar(&o.mode_, "m", modeAnime, "waifu2x mode, choose from 'anime' and 'photo' (short) (default anime)")
+	o.flagSet.StringVar(&o.mode_, "mode", modeAnime, "waifu2x mode, choose from 'anime' and 'photo' (default anime)")
 
 	return
 }
@@ -65,19 +64,20 @@ func (o *option) parse(args []string) error {
 	if nonFlag := o.flagSet.Args(); len(nonFlag) != 0 {
 		return fmt.Errorf("invalid argument: %v", nonFlag)
 	}
-	if o.input == "" {
-		return fmt.Errorf("input file is empty")
-	}
 	if o.scale < 1.0 {
 		return fmt.Errorf("invalid scale, %v > 1", o.scale)
 	}
-	if o.jobs < 1 {
-		return fmt.Errorf("invalid number of jobs, %v < 1", o.jobs)
-	}
 	if o.noiseReduction < 0 || o.noiseReduction > 3 {
-		return fmt.Errorf("invalid number of noise reduction level, it must be 0 - 3")
+		return fmt.Errorf("invalid number of noise reduction level, it must be [0,3]")
 	}
-	if o.mode != modeAnime && o.mode != modePhoto {
+	switch o.mode_ {
+	case "":
+		o.mode = engine.Anime // default mode
+	case modeAnime:
+		o.mode = engine.Anime
+	case modePhoto:
+		o.mode = engine.Photo
+	default:
 		return fmt.Errorf("invalid mode, choose from 'anime' or 'photo'")
 	}
 	return nil
@@ -90,44 +90,53 @@ func Usage() {
 	opt.flagSet.PrintDefaults()
 }
 
+func parseInputImage(file string) (image.Image, error) {
+	var b []byte
+	in := os.Stdin
+	if file != "" {
+		var err error
+		b, err = os.ReadFile(file)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		var err error
+		b, err = io.ReadAll(in)
+		if err != nil {
+			return nil, err
+		}
+	}
+	_, format, err := image.DecodeConfig(bytes.NewReader(b))
+	if err != nil {
+		return nil, err
+	}
+	var decoder func(io.Reader) (image.Image, error)
+	switch format {
+	case "jpeg":
+		decoder = jpeg.Decode
+	case "png":
+		decoder = png.Decode
+	default:
+		return nil, fmt.Errorf("unsupported image type: %s", format)
+	}
+	return decoder(bytes.NewReader(b))
+}
+
 // Run executes the waifu2x command.
 func Run(args []string) error {
 	opt := newOption(os.Stderr, flag.ContinueOnError)
 	if err := opt.parse(args); err != nil {
 		return err
 	}
-
-	fp, err := os.Open(opt.input)
+	img, err := parseInputImage(opt.input)
 	if err != nil {
-		return fmt.Errorf("input file %v, %w", opt.input, err)
-	}
-	defer fp.Close()
-
-	var img image.Image
-	if strings.HasSuffix(fp.Name(), "jpg") || strings.HasSuffix(fp.Name(), "jpeg") {
-		img, err = jpeg.Decode(fp)
-		if err != nil {
-			return fmt.Errorf("load file %v, %w", opt.input, err)
-		}
-	} else if strings.HasSuffix(fp.Name(), "png") {
-		img, err = png.Decode(fp)
-		if err != nil {
-			return fmt.Errorf("load file %v, %w", opt.input, err)
-		}
+		return fmt.Errorf("input error: %w", err)
 	}
 
-	mode := engine.Anime
-	switch opt.mode {
-	case "anime":
-		mode = engine.Anime
-	case "photo":
-		mode = engine.Photo
-	}
-	w2x, err := engine.NewWaifu2x(mode, opt.noiseReduction, engine.Parallel(8), engine.Verbose())
+	w2x, err := engine.NewWaifu2x(opt.mode, opt.noiseReduction, engine.Parallel(8), engine.Verbose())
 	if err != nil {
 		return err
 	}
-
 	rgba, err := w2x.ScaleUp(context.TODO(), img, opt.scale)
 	if err != nil {
 		return fmt.Errorf("calc error: %w", err)
@@ -143,7 +152,7 @@ func Run(args []string) error {
 		w = fp
 	}
 	if err := png.Encode(w, &rgba); err != nil {
-		panic(err)
+		return fmt.Errorf("output error: %w", err)
 	}
 	return nil
 }
