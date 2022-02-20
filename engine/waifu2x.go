@@ -216,15 +216,17 @@ func convolution(inputPlanes []ImagePlane, W []float64, nOutputPlane int, bias [
 			for i := range biasValues {
 				sumValues[i] = biasValues[i]
 			}
+			const square = 9
 			wi := 0
 			for i := range inputPlanes {
-				i00, i10, i20, i01, i11, i21, i02, i12, i22 := inputPlanes[i].SegmentAt(x, y)
+				a0, a1, a2, b0, b1, b2, c0, c1, c2 := inputPlanes[i].SegmentAt(x, y)
 				for o := 0; o < nOutputPlane; o++ {
-					ws := W[wi : wi+9]
-					sumValues[o] += ws[0]*i00 + ws[1]*i10 + ws[2]*i20 +
-						ws[3]*i01 + ws[4]*i11 + ws[5]*i21 +
-						ws[6]*i02 + ws[7]*i12 + ws[8]*i22
-					wi += 9
+					ws := W[wi : wi+square] // 3x3 square
+					sumValues[o] = sumValues[o] +
+						ws[0]*a0 + ws[1]*a1 + ws[2]*a2 +
+						ws[3]*b0 + ws[4]*b1 + ws[5]*b2 +
+						ws[6]*c0 + ws[7]*c1 + ws[8]*c2
+					wi += square
 				}
 			}
 			for o := 0; o < nOutputPlane; o++ {
