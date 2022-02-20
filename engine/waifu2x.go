@@ -178,7 +178,7 @@ func (w Waifu2x) convertRGB(ctx context.Context, imageR, imageG, imageB ChannelI
 				nOutputPlane := model[l].NOutputPlane
 				// convolution
 				outputBlock = convolution(inputBlock, model[l].WeightVec, nOutputPlane, model[l].Bias)
-				inputBlock = outputBlock // propagate logOutput plane to next layer input
+				inputBlock = outputBlock // propagate output plane to next layer input
 				inputBlocks[i] = nil
 			}
 			outputBlocks[i] = outputBlock
