@@ -157,7 +157,6 @@ func (w Waifu2x) convertRGB(ctx context.Context, imageR, imageG, imageB ChannelI
 	inputBlocks, blocksW, blocksH := Blocking(inputPlanes)
 
 	// init W
-	W := typeW(model)
 	outputBlocks := make([][]ImagePlane, len(inputBlocks))
 
 	digits := int(math.Log10(float64(len(inputBlocks)))) + 2
@@ -174,10 +173,10 @@ func (w Waifu2x) convertRGB(ctx context.Context, imageR, imageG, imageB ChannelI
 			}
 			inputBlock := inputBlocks[i]
 			var outputBlock []ImagePlane
-			for l := 0; l < len(model); l++ {
+			for l := range model {
 				nOutputPlane := model[l].NOutputPlane
 				// convolution
-				outputBlock = convolution(inputBlock, W[l], nOutputPlane, model[l].Bias)
+				outputBlock = convolution(inputBlock, model[l].WeightVec, nOutputPlane, model[l].Bias)
 				inputBlock = outputBlock // propagate output plane to next layer input
 				inputBlocks[i] = nil
 			}
@@ -197,26 +196,6 @@ func (w Waifu2x) convertRGB(ctx context.Context, imageR, imageG, imageB ChannelI
 	return R, G, B, nil
 }
 
-// W[][O*I*9]
-func typeW(model Model) [][]float64 {
-	var W [][]float64
-	for l := 0; l < len(model); l++ {
-		// initialize weight matrix
-		param := model[l]
-		var vec []float64
-		// [nOutputPlane][nInputPlane][3][3]
-		for i := 0; i < param.NInputPlane; i++ {
-			for o := 0; o < param.NOutputPlane; o++ {
-				vec = append(vec, param.Weight[o][i][0]...)
-				vec = append(vec, param.Weight[o][i][1]...)
-				vec = append(vec, param.Weight[o][i][2]...)
-			}
-		}
-		W = append(W, vec)
-	}
-	return W
-}
-
 func convolution(inputPlanes []ImagePlane, W []float64, nOutputPlane int, bias []float64) []ImagePlane {
 	if len(inputPlanes) == 0 {
 		return nil
@@ -234,7 +213,7 @@ func convolution(inputPlanes []ImagePlane, W []float64, nOutputPlane int, bias [
 	}
 	for y := 1; y < height-1; y++ {
 		for x := 1; x < width-1; x++ {
-			for i := 0; i < len(biasValues); i++ {
+			for i := range biasValues {
 				sumValues[i] = biasValues[i]
 			}
 			wi := 0
