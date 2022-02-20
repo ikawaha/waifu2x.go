@@ -32,7 +32,7 @@ type option struct {
 	noise   int
 	modeStr string
 	verbose bool
-	
+
 	// option values
 	mode    engine.Mode
 	flagSet *flag.FlagSet
