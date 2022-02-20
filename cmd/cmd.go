@@ -30,7 +30,7 @@ type option struct {
 	output         string
 	scale          float64
 	noiseReduction int
-	mode_          string
+	modeStr        string
 	verbose        bool
 	// option values
 	mode    engine.Mode
@@ -47,7 +47,7 @@ func newOption(w io.Writer, eh flag.ErrorHandling) (o *option) {
 	o.flagSet.StringVar(&o.output, "o", "", "output file (default stdout)")
 	o.flagSet.Float64Var(&o.scale, "s", 2.0, "scale multiplier >= 1.0 (default 2)")
 	o.flagSet.IntVar(&o.noiseReduction, "n", 0, "noise reduction level 0 <= n <= 3 (default 0)")
-	o.flagSet.StringVar(&o.mode_, "m", modeAnime, "waifu2x mode, choose from 'anime' and 'photo' (default anime)")
+	o.flagSet.StringVar(&o.modeStr, "m", modeAnime, "waifu2x mode, choose from 'anime' and 'photo' (default anime)")
 	o.flagSet.BoolVar(&o.verbose, "v", false, "verbose")
 	return
 }
@@ -66,7 +66,7 @@ func (o *option) parse(args []string) error {
 	if o.noiseReduction < 0 || o.noiseReduction > 3 {
 		return fmt.Errorf("invalid number of noise reduction level, it must be [0,3]")
 	}
-	switch o.mode_ {
+	switch o.modeStr {
 	case "":
 		o.mode = engine.Anime // default mode
 	case modeAnime:
