@@ -87,9 +87,15 @@ func (w Waifu2x) ScaleUp(ctx context.Context, img image.Image, scale float64) (i
 	for {
 		if scale < 2.0 {
 			ci, err = w.convertChannelImage(ctx, ci, opaque, scale)
+			if err != nil {
+				return image.RGBA{}, err
+			}
 			break
 		}
 		ci, err = w.convertChannelImage(ctx, ci, opaque, 2)
+		if err != nil {
+			return image.RGBA{}, err
+		}
 		scale = scale / 2.0
 	}
 	return ci.ImageRGBA(), err
