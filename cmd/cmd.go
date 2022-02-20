@@ -16,7 +16,7 @@ import (
 
 const (
 	commandName  = "waifu2x"
-	usageMessage = "%s (-i|--input) <input_file> [-o|--output <output_file>] [-s|--scale <scale_factor>] [-j|--jobs <n>] [-n|--noise <n>] [-m|--mode (anime|photo)]\n"
+	usageMessage = "%s [-i <input_file>] [-o <output_file>] [-s <scale_factor>] [-n <noise_reduction_level>] [-m (anime|photo)]\n"
 )
 
 const (
@@ -31,6 +31,7 @@ type option struct {
 	scale          float64
 	noiseReduction int
 	mode_          string
+	verbose        bool
 	// option values
 	mode    engine.Mode
 	flagSet *flag.FlagSet
@@ -42,17 +43,12 @@ func newOption(w io.Writer, eh flag.ErrorHandling) (o *option) {
 	}
 	// option settings
 	o.flagSet.SetOutput(w)
-	o.flagSet.StringVar(&o.input, "i", "", "input file (short)")
-	o.flagSet.StringVar(&o.input, "input", "", "input file")
-	o.flagSet.StringVar(&o.output, "o", "", "output file (short) (default stdout)")
-	o.flagSet.StringVar(&o.output, "output", "", "output file (default stdout)")
-	o.flagSet.Float64Var(&o.scale, "s", 2.0, "scale multiplier >= 1.0 (short)")
-	o.flagSet.Float64Var(&o.scale, "scale", 2.0, "scale multiplier >= 1.0")
-	o.flagSet.IntVar(&o.noiseReduction, "n", 0, "noise reduction level 0 <= n <= 3 (short)")
-	o.flagSet.IntVar(&o.noiseReduction, "noise", 0, "noise reduction level 0 <= n <= 3")
-	o.flagSet.StringVar(&o.mode_, "m", modeAnime, "waifu2x mode, choose from 'anime' and 'photo' (short) (default anime)")
-	o.flagSet.StringVar(&o.mode_, "mode", modeAnime, "waifu2x mode, choose from 'anime' and 'photo' (default anime)")
-
+	o.flagSet.StringVar(&o.input, "i", "", "input file (default stdin)")
+	o.flagSet.StringVar(&o.output, "o", "", "output file (default stdout)")
+	o.flagSet.Float64Var(&o.scale, "s", 2.0, "scale multiplier >= 1.0 (default 2)")
+	o.flagSet.IntVar(&o.noiseReduction, "n", 0, "noise reduction level 0 <= n <= 3 (default 0)")
+	o.flagSet.StringVar(&o.mode_, "m", modeAnime, "waifu2x mode, choose from 'anime' and 'photo' (default anime)")
+	o.flagSet.BoolVar(&o.verbose, "v", false, "verbose")
 	return
 }
 
@@ -133,7 +129,7 @@ func Run(args []string) error {
 		return fmt.Errorf("input error: %w", err)
 	}
 
-	w2x, err := engine.NewWaifu2x(opt.mode, opt.noiseReduction, engine.Parallel(8), engine.Verbose())
+	w2x, err := engine.NewWaifu2x(opt.mode, opt.noiseReduction, engine.Verbose(opt.verbose))
 	if err != nil {
 		return err
 	}

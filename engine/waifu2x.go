@@ -13,7 +13,7 @@ import (
 // Option represents an option of waifu2x.
 type Option func(w *Waifu2x) error
 
-// Parallel is the option that specifies the number of concurrency.
+// Parallel sets the option that specifies the limit number of concurrency.
 func Parallel(p int) Option {
 	return func(w *Waifu2x) error {
 		w.parallel = p
@@ -21,18 +21,18 @@ func Parallel(p int) Option {
 	}
 }
 
-// Verbose is the verbose option.
-func Verbose() Option {
+// Verbose sets the verbose option.
+func Verbose(v bool) Option {
 	return func(w *Waifu2x) error {
-		w.verbose = true
+		w.verbose = v
 		return nil
 	}
 }
 
-// Output is the option that sets the output destination.
-func Output(w io.Writer) Option {
+// LogOutput sets the log output destination.
+func LogOutput(w io.Writer) Option {
 	return func(w2x *Waifu2x) error {
-		w2x.output = w
+		w2x.logOutput = w
 		return nil
 	}
 }
@@ -43,7 +43,7 @@ type Waifu2x struct {
 	noiseModel Model
 	parallel   int
 	verbose    bool
-	output     io.Writer
+	logOutput  io.Writer
 }
 
 // NewWaifu2x creates a Waifu2x structure.
@@ -55,8 +55,7 @@ func NewWaifu2x(mode Mode, noise int, opts ...Option) (*Waifu2x, error) {
 	ret := &Waifu2x{
 		scaleModel: m.Scale2xModel,
 		noiseModel: m.NoiseModel,
-		parallel:   1,
-		output:     os.Stderr,
+		logOutput:  os.Stderr,
 		verbose:    false,
 	}
 	for _, opt := range opts {
@@ -69,13 +68,13 @@ func NewWaifu2x(mode Mode, noise int, opts ...Option) (*Waifu2x, error) {
 
 func (w Waifu2x) printf(format string, a ...interface{}) {
 	if w.verbose {
-		fmt.Fprintf(w.output, format, a...)
+		fmt.Fprintf(w.logOutput, format, a...)
 	}
 }
 
 func (w Waifu2x) println(a ...interface{}) {
 	if w.verbose {
-		fmt.Fprintln(w.output, a...)
+		fmt.Fprintln(w.logOutput, a...)
 	}
 }
 
@@ -94,7 +93,9 @@ func (w Waifu2x) convertChannelImage(ctx context.Context, img ChannelImage, opaq
 		return img, nil
 	}
 
-	w.printf("# of goroutines: %d\n", w.parallel)
+	if w.parallel > 0 {
+		w.printf("# of goroutines: %d\n", w.parallel)
+	}
 
 	// decompose
 	w.println("decomposing channels ...")
@@ -177,7 +178,7 @@ func (w Waifu2x) convertRGB(ctx context.Context, imageR, imageG, imageB ChannelI
 				nOutputPlane := model[l].NOutputPlane
 				// convolution
 				outputBlock = convolution(inputBlock, model[l].WeightVec, nOutputPlane, model[l].Bias)
-				inputBlock = outputBlock // propagate output plane to next layer input
+				inputBlock = outputBlock // propagate logOutput plane to next layer input
 				inputBlocks[i] = nil
 			}
 			outputBlocks[i] = outputBlock
