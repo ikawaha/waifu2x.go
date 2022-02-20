@@ -5,35 +5,70 @@ import (
 	"fmt"
 	"image"
 	"image/png"
+	"math"
 	"os"
 	"runtime"
 	"testing"
 )
 
-const (
-	modeAnime = "anime"
-	modePhoto = "photo"
-)
+func TestWaifu2x_ScaleUp(t *testing.T) {
+	w2x, err := NewWaifu2x(Anime, 0)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	fp, err := os.Open("../testdata/neko_small.png")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	img, err := png.Decode(fp)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	testdata := []struct {
+		name  string
+		scale float64
+	}{
+		{name: "scale up x1.0", scale: 1.0},
+		{name: "scale up x1.7", scale: 1.7},
+		{name: "scale up x2.0", scale: 2.0},
+		{name: "scale up x3.3", scale: 3.3},
+		{name: "scale up x4.0", scale: 4.0},
+	}
+	for _, tt := range testdata {
+		t.Run(tt.name, func(t *testing.T) {
+			imgX, err := w2x.ScaleUp(context.TODO(), img, tt.scale)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if want, got := int(math.Round(float64(img.Bounds().Max.X)*tt.scale)), imgX.Bounds().Max.X; want != got {
+				t.Errorf("want %d, got %d", want, got)
+			}
+			if want, got := int(math.Round(float64(img.Bounds().Max.Y)*tt.scale)), imgX.Bounds().Max.Y; want != got {
+				t.Errorf("want %d, got %d", want, got)
+			}
+		})
+	}
+}
 
 func BenchmarkWaifu(b *testing.B) {
 	tests := []struct {
 		name  string
 		pic   string
-		mode  string
+		mode  Mode
 		noise int
 		alpha bool
 	}{
 		{
 			name:  "Neko",
 			pic:   "../testdata/neko_small.png",
-			mode:  modeAnime,
+			mode:  Anime,
 			noise: 0,
 			alpha: false,
 		},
 		{
 			name:  "Neko-alpha",
 			pic:   "../testdata/neko_alpha.png",
-			mode:  modeAnime,
+			mode:  Anime,
 			noise: 0,
 			alpha: true,
 		},
@@ -59,9 +94,9 @@ func BenchmarkWaifu(b *testing.B) {
 		var noiseFn string
 
 		switch tt.mode {
-		case modeAnime:
+		case Anime:
 			modelDir = "anime_style_art_rgb"
-		case modePhoto:
+		case Photo:
 			modelDir = "photo"
 		}
 
@@ -106,47 +141,47 @@ func BenchmarkWaifu(b *testing.B) {
 func TestAllCombinations(t *testing.T) {
 	tests := []struct {
 		name  string
-		mode  string
+		mode  Mode
 		noise int
 	}{
 		{
 			name:  "Anime, noiseModel reduction level 0",
-			mode:  modeAnime,
+			mode:  Anime,
 			noise: 0,
 		},
 		{
 			name:  "Anime, noiseModel reduction level 1",
-			mode:  modeAnime,
+			mode:  Anime,
 			noise: 1,
 		},
 		{
 			name:  "Anime, noiseModel reduction level 2",
-			mode:  modeAnime,
+			mode:  Anime,
 			noise: 2,
 		},
 		{
 			name:  "Anime, noiseModel reduction level 3",
-			mode:  modeAnime,
+			mode:  Anime,
 			noise: 3,
 		},
 		{
 			name:  "Photo, noiseModel reduction level 0",
-			mode:  modePhoto,
+			mode:  Photo,
 			noise: 0,
 		},
 		{
 			name:  "Photo, noiseModel reduction level 1",
-			mode:  modePhoto,
+			mode:  Photo,
 			noise: 1,
 		},
 		{
 			name:  "Photo, noiseModel reduction level 2",
-			mode:  modePhoto,
+			mode:  Photo,
 			noise: 2,
 		},
 		{
 			name:  "Photo, noiseModel reduction level 3",
-			mode:  modePhoto,
+			mode:  Photo,
 			noise: 3,
 		},
 	}
@@ -172,9 +207,9 @@ func TestAllCombinations(t *testing.T) {
 			var noiseFn string
 
 			switch tt.mode {
-			case modeAnime:
+			case Anime:
 				modelDir = "anime_style_art_rgb"
-			case modePhoto:
+			case Photo:
 				modelDir = "photo"
 			}
 
