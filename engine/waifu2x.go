@@ -105,7 +105,7 @@ func (w Waifu2x) convertChannelImage(ctx context.Context, img ChannelImage, opaq
 	if w.noiseModel != nil {
 		w.println("de-noising ...")
 		var err error
-		r, g, b, err = w.convertRGB(ctx, r, g, b, w.noiseModel, 1, w.parallel)
+		r, g, b, err = w.convertRGB(ctx, r, g, b, w.noiseModel, 1)
 		if err != nil {
 			return ChannelImage{}, err
 		}
@@ -115,7 +115,7 @@ func (w Waifu2x) convertChannelImage(ctx context.Context, img ChannelImage, opaq
 	if w.scaleModel != nil {
 		w.println("scaling ...")
 		var err error
-		r, g, b, err = w.convertRGB(ctx, r, g, b, w.scaleModel, scale, w.parallel)
+		r, g, b, err = w.convertRGB(ctx, r, g, b, w.scaleModel, scale)
 		if err != nil {
 			return ChannelImage{}, err
 		}
@@ -127,7 +127,7 @@ func (w Waifu2x) convertChannelImage(ctx context.Context, img ChannelImage, opaq
 	} else if w.scaleModel != nil { // upscale the alpha channel
 		w.println("scaling alpha ...")
 		var err error
-		a, _, _, err = w.convertRGB(ctx, a, a, a, w.scaleModel, scale, w.parallel)
+		a, _, _, err = w.convertRGB(ctx, a, a, a, w.scaleModel, scale)
 		if err != nil {
 			return ChannelImage{}, err
 		}
@@ -142,7 +142,7 @@ func (w Waifu2x) convertChannelImage(ctx context.Context, img ChannelImage, opaq
 	return ChannelCompose(r, g, b, a), nil
 }
 
-func (w Waifu2x) convertRGB(ctx context.Context, imageR, imageG, imageB ChannelImage, model Model, scale float64, jobs int) (r, g, b ChannelImage, err error) {
+func (w Waifu2x) convertRGB(ctx context.Context, imageR, imageG, imageB ChannelImage, model Model, scale float64) (r, g, b ChannelImage, err error) {
 	var inputPlanes [3]ImagePlane
 	for i, img := range []ChannelImage{imageR, imageG, imageB} {
 		imgResized := img.Resize(scale)
