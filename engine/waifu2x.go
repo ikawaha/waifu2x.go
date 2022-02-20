@@ -142,7 +142,7 @@ func (w Waifu2x) convertChannelImage(ctx context.Context, img ChannelImage, opaq
 	return ChannelCompose(r, g, b, a), nil
 }
 
-func (w Waifu2x) convertRGB(ctx context.Context, imageR, imageG, imageB ChannelImage, model Model, scale float64) (r, g, b ChannelImage, err error) {
+func (w Waifu2x) convertRGB(_ context.Context, imageR, imageG, imageB ChannelImage, model Model, scale float64) (r, g, b ChannelImage, err error) {
 	var inputPlanes [3]ImagePlane
 	for i, img := range []ChannelImage{imageR, imageG, imageB} {
 		imgResized := img.Resize(scale)
