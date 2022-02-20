@@ -16,6 +16,7 @@ type Param struct {
 	Weight       [][][][]float64 `json:"weight"`       // 重み
 	NInputPlane  int             `json:"nInputPlane"`  // 入力平面数
 	NOutputPlane int             `json:"nOutputPlane"` // 出力平面数
+	WeightVec    []float64
 }
 
 // Model represents a trained model.
@@ -38,6 +39,7 @@ func LoadModel(r io.Reader) (Model, error) {
 	if err := dec.Decode(&m); err != nil {
 		return nil, err
 	}
+	m.setWeightVec()
 	return m, nil
 }
 
@@ -121,4 +123,30 @@ func NewAssetModelSet(t Mode, noiseLevel int) (*ModelSet, error) {
 		Scale2xModel: scale,
 		NoiseModel:   noise,
 	}, nil
+}
+
+func (m Model) setWeightVec() {
+	for l := range m {
+		param := m[l]
+		// [nOutputPlane][nInputPlane][3][3]
+		const square = 9
+		vec := make([]float64, param.NInputPlane*param.NOutputPlane*9)
+		for i := 0; i < param.NInputPlane; i++ {
+			for o := 0; o < param.NOutputPlane; o++ {
+				offset := i*param.NOutputPlane*square + o*square
+				vec[offset+0] = param.Weight[o][i][0][0]
+				vec[offset+1] = param.Weight[o][i][0][1]
+				vec[offset+2] = param.Weight[o][i][0][2]
+
+				vec[offset+3] = param.Weight[o][i][1][0]
+				vec[offset+4] = param.Weight[o][i][1][1]
+				vec[offset+5] = param.Weight[o][i][1][2]
+
+				vec[offset+6] = param.Weight[o][i][2][0]
+				vec[offset+7] = param.Weight[o][i][2][1]
+				vec[offset+8] = param.Weight[o][i][2][2]
+			}
+		}
+		m[l].WeightVec = vec
+	}
 }

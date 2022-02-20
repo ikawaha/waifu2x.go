@@ -157,7 +157,6 @@ func (w Waifu2x) convertRGB(ctx context.Context, imageR, imageG, imageB ChannelI
 	inputBlocks, blocksW, blocksH := Blocking(inputPlanes)
 
 	// init W
-	W := typeW(model)
 	outputBlocks := make([][]ImagePlane, len(inputBlocks))
 
 	digits := int(math.Log10(float64(len(inputBlocks)))) + 2
@@ -174,10 +173,10 @@ func (w Waifu2x) convertRGB(ctx context.Context, imageR, imageG, imageB ChannelI
 			}
 			inputBlock := inputBlocks[i]
 			var outputBlock []ImagePlane
-			for l := 0; l < len(model); l++ {
+			for l := range model {
 				nOutputPlane := model[l].NOutputPlane
 				// convolution
-				outputBlock = convolution(inputBlock, W[l], nOutputPlane, model[l].Bias)
+				outputBlock = convolution(inputBlock, model[l].WeightVec, nOutputPlane, model[l].Bias)
 				inputBlock = outputBlock // propagate output plane to next layer input
 				inputBlocks[i] = nil
 			}
@@ -197,26 +196,6 @@ func (w Waifu2x) convertRGB(ctx context.Context, imageR, imageG, imageB ChannelI
 	return R, G, B, nil
 }
 
-// W[][O*I*9]
-func typeW(model Model) [][]float64 {
-	var W [][]float64
-	for l := 0; l < len(model); l++ {
-		// initialize weight matrix
-		param := model[l]
-		var vec []float64
-		// [nOutputPlane][nInputPlane][3][3]
-		for i := 0; i < param.NInputPlane; i++ {
-			for o := 0; o < param.NOutputPlane; o++ {
-				vec = append(vec, param.Weight[o][i][0]...)
-				vec = append(vec, param.Weight[o][i][1]...)
-				vec = append(vec, param.Weight[o][i][2]...)
-			}
-		}
-		W = append(W, vec)
-	}
-	return W
-}
-
 func convolution(inputPlanes []ImagePlane, W []float64, nOutputPlane int, bias []float64) []ImagePlane {
 	if len(inputPlanes) == 0 {
 		return nil
@@ -234,18 +213,20 @@ func convolution(inputPlanes []ImagePlane, W []float64, nOutputPlane int, bias [
 	}
 	for y := 1; y < height-1; y++ {
 		for x := 1; x < width-1; x++ {
-			for i := 0; i < len(biasValues); i++ {
+			for i := range biasValues {
 				sumValues[i] = biasValues[i]
 			}
+			const square = 9
 			wi := 0
 			for i := range inputPlanes {
-				i00, i10, i20, i01, i11, i21, i02, i12, i22 := inputPlanes[i].SegmentAt(x, y)
+				a0, a1, a2, b0, b1, b2, c0, c1, c2 := inputPlanes[i].SegmentAt(x, y)
 				for o := 0; o < nOutputPlane; o++ {
-					ws := W[wi : wi+9]
-					sumValues[o] += ws[0]*i00 + ws[1]*i10 + ws[2]*i20 +
-						ws[3]*i01 + ws[4]*i11 + ws[5]*i21 +
-						ws[6]*i02 + ws[7]*i12 + ws[8]*i22
-					wi += 9
+					ws := W[wi : wi+square] // 3x3 square
+					sumValues[o] = sumValues[o] +
+						ws[0]*a0 + ws[1]*a1 + ws[2]*a2 +
+						ws[3]*b0 + ws[4]*b1 + ws[5]*b2 +
+						ws[6]*c0 + ws[7]*c1 + ws[8]*c2
+					wi += square
 				}
 			}
 			for o := 0; o < nOutputPlane; o++ {
