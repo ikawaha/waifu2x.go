@@ -32,7 +32,6 @@ func Test_setWeightVec(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error, %v", err)
 	}
-
 	matrix := typeW(model)
 	model.setWeightVec()
 	for i, param := range model {
@@ -42,7 +41,6 @@ func Test_setWeightVec(t *testing.T) {
 			}
 		}
 	}
-
 }
 
 // W[][O*I*9]
