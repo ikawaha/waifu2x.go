@@ -136,7 +136,7 @@ func Run(args []string) error {
 	}
 	rgba, err := w2x.ScaleUp(context.TODO(), img, opt.scale)
 	if err != nil {
-		return fmt.Errorf("calc error: %w", err)
+		return err
 	}
 
 	var w io.Writer = os.Stdout
