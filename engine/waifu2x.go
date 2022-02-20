@@ -80,19 +80,19 @@ func (w Waifu2x) println(a ...interface{}) {
 
 // ScaleUp scales up the image.
 func (w Waifu2x) ScaleUp(ctx context.Context, img image.Image, scale float64) (image.RGBA, error) {
-	ci, opaque, err := NewChannelImage(img)
+	ci, _, err := NewChannelImage(img)
 	if err != nil {
 		return image.RGBA{}, err
 	}
 	for {
 		if scale < 2.0 {
-			ci, err = w.convertChannelImage(ctx, ci, opaque, scale)
+			ci, err = w.convertChannelImage(ctx, ci, scale)
 			if err != nil {
 				return image.RGBA{}, err
 			}
 			break
 		}
-		ci, err = w.convertChannelImage(ctx, ci, opaque, 2)
+		ci, err = w.convertChannelImage(ctx, ci, 2)
 		if err != nil {
 			return image.RGBA{}, err
 		}
@@ -101,7 +101,7 @@ func (w Waifu2x) ScaleUp(ctx context.Context, img image.Image, scale float64) (i
 	return ci.ImageRGBA(), err
 }
 
-func (w Waifu2x) convertChannelImage(ctx context.Context, img ChannelImage, opaque bool, scale float64) (ChannelImage, error) {
+func (w Waifu2x) convertChannelImage(ctx context.Context, img ChannelImage, scale float64) (ChannelImage, error) {
 	if (w.scaleModel == nil && w.noiseModel == nil) || scale <= 1 {
 		return img, nil
 	}
@@ -135,16 +135,19 @@ func (w Waifu2x) convertChannelImage(ctx context.Context, img ChannelImage, opaq
 	}
 
 	// alpha channel
-	if !opaque {
-		a = a.Resize(scale) // Resize simply
-	} else if w.scaleModel != nil { // upscale the alpha channel
-		w.println("scaling alpha ...")
-		var err error
-		a, _, _, err = w.convertRGB(ctx, a, a, a, w.scaleModel, scale)
-		if err != nil {
-			return ChannelImage{}, err
+	a = a.Resize(scale)
+	/*
+		if !opaque {
+			a = a.Resize(scale) // Resize simply
+		} else if w.scaleModel != nil { // upscale the alpha channel
+			w.println("scaling alpha ...")
+			var err error
+			a, _, _, err = w.convertRGB(ctx, a, a, a, w.scaleModel, scale)
+			if err != nil {
+				return ChannelImage{}, err
+			}
 		}
-	}
+	*/
 
 	if len(a.Buffer) != len(r.Buffer) {
 		return ChannelImage{}, fmt.Errorf("channel image size must be same, A=%d, R=%d", len(a.Buffer), len(r.Buffer))
