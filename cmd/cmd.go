@@ -16,11 +16,6 @@ import (
 )
 
 const (
-	commandName  = "waifu2x"
-	usageMessage = "%s [-i <input_file>] [-o <output_file>] [-s <scale_factor>] [-n <noise_reduction_level>] [-m (anime|photo)]\n"
-)
-
-const (
 	modeAnime = "anime"
 	modePhoto = "photo"
 )
@@ -40,6 +35,8 @@ type option struct {
 	flagSet *flag.FlagSet
 }
 
+const commandName = `waifu2x`
+
 func newOption(w io.Writer, eh flag.ErrorHandling) (o *option) {
 	o = &option{
 		flagSet: flag.NewFlagSet(commandName, eh),
@@ -48,10 +45,10 @@ func newOption(w io.Writer, eh flag.ErrorHandling) (o *option) {
 	o.flagSet.SetOutput(w)
 	o.flagSet.StringVar(&o.input, "i", "", "input file (default stdin)")
 	o.flagSet.StringVar(&o.output, "o", "", "output file (default stdout)")
-	o.flagSet.Float64Var(&o.scale, "s", 2.0, "scale multiplier >= 1.0 (default 2)")
-	o.flagSet.IntVar(&o.noise, "n", 0, "noise reduction level 0 <= n <= 3 (default 0)")
-	o.flagSet.IntVar(&o.parallel, "p", runtime.GOMAXPROCS(runtime.NumCPU()), "concurrency (default GOMAXPROCS)")
-	o.flagSet.StringVar(&o.modeStr, "m", modeAnime, "waifu2x mode, choose from 'anime' and 'photo' (default anime)")
+	o.flagSet.Float64Var(&o.scale, "s", 2.0, "scale multiplier >= 1.0")
+	o.flagSet.IntVar(&o.noise, "n", 0, "noise reduction level 0 <= n <= 3")
+	o.flagSet.IntVar(&o.parallel, "p", runtime.GOMAXPROCS(runtime.NumCPU()), "concurrency")
+	o.flagSet.StringVar(&o.modeStr, "m", modeAnime, "waifu2x mode, choose from 'anime' and 'photo'")
 	o.flagSet.BoolVar(&o.verbose, "v", false, "verbose")
 	return
 }
@@ -74,8 +71,6 @@ func (o *option) parse(args []string) error {
 		return fmt.Errorf("invalid number of parallel, it must be >= 1")
 	}
 	switch o.modeStr {
-	case "":
-		o.mode = engine.Anime // default mode
 	case modeAnime:
 		o.mode = engine.Anime
 	case modePhoto:
@@ -84,13 +79,6 @@ func (o *option) parse(args []string) error {
 		return fmt.Errorf("invalid mode, choose from 'anime' or 'photo'")
 	}
 	return nil
-}
-
-// Usage shows a usage message.
-func Usage() {
-	fmt.Printf(usageMessage, commandName)
-	opt := newOption(os.Stdout, flag.ContinueOnError)
-	opt.flagSet.PrintDefaults()
 }
 
 func parseInputImage(file string) (image.Image, error) {
@@ -127,7 +115,7 @@ func parseInputImage(file string) (image.Image, error) {
 
 // Run executes the waifu2x command.
 func Run(args []string) error {
-	opt := newOption(os.Stderr, flag.ContinueOnError)
+	opt := newOption(os.Stderr, flag.ExitOnError)
 	if err := opt.parse(args); err != nil {
 		return err
 	}
