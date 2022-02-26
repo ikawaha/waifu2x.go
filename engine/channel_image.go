@@ -18,7 +18,7 @@ func NewChannelImageWidthHeight(width, height int) ChannelImage {
 	return ChannelImage{
 		Width:  width,
 		Height: height,
-		Buffer: make([]uint8, width*height), // XXX 0以下を0, 255以上を255 として登録する必要あり
+		Buffer: make([]uint8, width*height), // note. it is necessary to register all values less than 0 as 0 and greater than 255 as 255
 	}
 }
 
