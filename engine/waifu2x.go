@@ -18,7 +18,7 @@ type Option func(w *Waifu2x) error
 func Parallel(p int) Option {
 	return func(w *Waifu2x) error {
 		if p < 0 {
-			p = 1
+			return fmt.Errorf("an integer value less than 1")
 		}
 		w.parallel = p
 		return nil
