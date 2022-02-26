@@ -7,6 +7,7 @@ import (
 	"io"
 	"math"
 	"os"
+	"runtime"
 	"sync"
 )
 
@@ -16,6 +17,9 @@ type Option func(w *Waifu2x) error
 // Parallel sets the option that specifies the limit number of concurrency.
 func Parallel(p int) Option {
 	return func(w *Waifu2x) error {
+		if p < 0 {
+			return fmt.Errorf("an integer value less than 1")
+		}
 		w.parallel = p
 		return nil
 	}
@@ -56,6 +60,7 @@ func NewWaifu2x(mode Mode, noise int, opts ...Option) (*Waifu2x, error) {
 		scaleModel: m.Scale2xModel,
 		noiseModel: m.NoiseModel,
 		logOutput:  os.Stderr,
+		parallel:   runtime.GOMAXPROCS(runtime.NumCPU()),
 		verbose:    false,
 	}
 	for _, opt := range opts {
@@ -180,10 +185,12 @@ func (w Waifu2x) convertRGB(_ context.Context, imageR, imageG, imageB ChannelIma
 	fmtStr := fmt.Sprintf("%%%dd/%%%dd", digits, digits) + " (%.1f%%)"
 	w.printf(fmtStr, 0, len(inputBlocks), 0.0)
 
+	limit := make(chan struct{}, w.parallel)
 	wg := sync.WaitGroup{}
 	for i := range inputBlocks {
 		wg.Add(1)
 		go func(i int) {
+			limit <- struct{}{}
 			defer wg.Done()
 			if i >= 10 {
 				w.printf("\x1b[2K\r"+fmtStr, i+1, len(inputBlocks), float32(i+1)/float32(len(inputBlocks))*100)
@@ -198,6 +205,7 @@ func (w Waifu2x) convertRGB(_ context.Context, imageR, imageG, imageB ChannelIma
 				inputBlocks[i] = nil
 			}
 			outputBlocks[i] = outputBlock
+			<-limit
 		}(i)
 	}
 	wg.Wait()

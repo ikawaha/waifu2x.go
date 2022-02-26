@@ -10,6 +10,7 @@ import (
 	"image/png"
 	"io"
 	"os"
+	"runtime"
 
 	"github.com/ikawaha/waifu2x.go/engine"
 )
@@ -26,12 +27,13 @@ const (
 
 type option struct {
 	// flagSet args
-	input   string
-	output  string
-	scale   float64
-	noise   int
-	modeStr string
-	verbose bool
+	input    string
+	output   string
+	scale    float64
+	noise    int
+	parallel int
+	modeStr  string
+	verbose  bool
 
 	// option values
 	mode    engine.Mode
@@ -48,6 +50,7 @@ func newOption(w io.Writer, eh flag.ErrorHandling) (o *option) {
 	o.flagSet.StringVar(&o.output, "o", "", "output file (default stdout)")
 	o.flagSet.Float64Var(&o.scale, "s", 2.0, "scale multiplier >= 1.0 (default 2)")
 	o.flagSet.IntVar(&o.noise, "n", 0, "noise reduction level 0 <= n <= 3 (default 0)")
+	o.flagSet.IntVar(&o.parallel, "p", runtime.GOMAXPROCS(runtime.NumCPU()), "concurrency (default GOMAXPROCS)")
 	o.flagSet.StringVar(&o.modeStr, "m", modeAnime, "waifu2x mode, choose from 'anime' and 'photo' (default anime)")
 	o.flagSet.BoolVar(&o.verbose, "v", false, "verbose")
 	return
@@ -66,6 +69,9 @@ func (o *option) parse(args []string) error {
 	}
 	if o.noise < 0 || o.noise > 3 {
 		return fmt.Errorf("invalid number of noise reduction level, it must be [0,3]")
+	}
+	if o.parallel < 1 {
+		return fmt.Errorf("invalid number of parallel, it must be >= 1")
 	}
 	switch o.modeStr {
 	case "":
@@ -130,7 +136,10 @@ func Run(args []string) error {
 		return fmt.Errorf("input error: %w", err)
 	}
 
-	w2x, err := engine.NewWaifu2x(opt.mode, opt.noise, engine.Verbose(opt.verbose))
+	w2x, err := engine.NewWaifu2x(opt.mode, opt.noise, []engine.Option{
+		engine.Verbose(opt.verbose),
+		engine.Parallel(opt.parallel),
+	}...)
 	if err != nil {
 		return err
 	}
