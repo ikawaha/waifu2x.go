@@ -175,5 +175,4 @@ func Run(args []string) error {
 		return err
 	}
 	return scaleUpGIF(context.TODO(), w2x, img, opt.scale, w)
-
 }
