@@ -84,6 +84,7 @@ func (w Waifu2x) println(a ...interface{}) {
 	}
 }
 
+// ScaleUpGIF scales up the GIF image.
 func (w Waifu2x) ScaleUpGIF(ctx context.Context, img *gif.GIF, scale float64) (*gif.GIF, error) {
 	frames := make([]*image.Paletted, 0, len(img.Image))
 	for _, v := range img.Image {
