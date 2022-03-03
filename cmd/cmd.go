@@ -92,7 +92,12 @@ func parseInputImage(file string) ([]byte, string, error) {
 		}
 		defer r.Close()
 	}
-	return engine.ReadImageFile(r)
+	b, err := io.ReadAll(r)
+	if err != nil {
+		return nil, "", err
+	}
+	_, format, err := image.DecodeConfig(bytes.NewReader(b))
+	return b, format, err
 }
 
 func decodeImage(b []byte, format string) (image.Image, error) {
