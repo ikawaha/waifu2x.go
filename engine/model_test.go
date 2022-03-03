@@ -44,12 +44,12 @@ func Test_setWeightVec(t *testing.T) {
 }
 
 // W[][O*I*9]
-func typeW(model Model) [][]float64 {
-	var W [][]float64
+func typeW(model Model) [][]float32 {
+	var W [][]float32
 	for l := range model {
 		// initialize weight matrix
 		param := model[l]
-		var vec []float64
+		var vec []float32
 		// [nOutputPlane][nInputPlane][3][3]
 		for i := 0; i < param.NInputPlane; i++ {
 			for o := 0; o < param.NOutputPlane; o++ {
