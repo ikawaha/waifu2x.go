@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"image"
+	"image/gif"
 	"io"
 	"math"
 	"os"
@@ -83,27 +84,45 @@ func (w Waifu2x) println(a ...interface{}) {
 	}
 }
 
+// ScaleUpGIF scales up the GIF image.
+func (w Waifu2x) ScaleUpGIF(ctx context.Context, img *gif.GIF, scale float64) (*gif.GIF, error) {
+	frames := make([]*image.Paletted, 0, len(img.Image))
+	for _, v := range img.Image {
+		p := v.Palette
+		ci, err := w.ScaleUp(ctx, v, scale)
+		if err != nil {
+			return nil, err
+		}
+		ip := ci.ImagePaletted(p)
+		frames = append(frames, ip)
+	}
+	img.Image = frames
+	img.Config.Width = int(float64(img.Config.Width) * scale)
+	img.Config.Height = int(float64(img.Config.Height) * scale)
+	return img, nil
+}
+
 // ScaleUp scales up the image.
-func (w Waifu2x) ScaleUp(ctx context.Context, img image.Image, scale float64) (image.RGBA, error) {
+func (w Waifu2x) ScaleUp(ctx context.Context, img image.Image, scale float64) (ChannelImage, error) {
 	ci, _, err := NewChannelImage(img)
 	if err != nil {
-		return image.RGBA{}, err
+		return ChannelImage{}, err
 	}
 	for {
 		if scale < 2.0 {
 			ci, err = w.convertChannelImage(ctx, ci, scale)
 			if err != nil {
-				return image.RGBA{}, err
+				return ChannelImage{}, err
 			}
 			break
 		}
 		ci, err = w.convertChannelImage(ctx, ci, 2)
 		if err != nil {
-			return image.RGBA{}, err
+			return ChannelImage{}, err
 		}
 		scale = scale / 2.0
 	}
-	return ci.ImageRGBA(), err
+	return ci, err
 }
 
 func (w Waifu2x) convertChannelImage(ctx context.Context, img ChannelImage, scale float64) (ChannelImage, error) {

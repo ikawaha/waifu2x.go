@@ -36,14 +36,14 @@ func TestWaifu2x_ScaleUp(t *testing.T) {
 	}
 	for _, tt := range testdata {
 		t.Run(tt.name, func(t *testing.T) {
-			imgX, err := w2x.ScaleUp(context.TODO(), img, tt.scale)
+			got, err := w2x.ScaleUp(context.TODO(), img, tt.scale)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if want, got := int(math.Round(float64(img.Bounds().Max.X)*tt.scale)), imgX.Bounds().Max.X; want != got {
+			if want, got := int(math.Round(float64(img.Bounds().Max.X)*tt.scale)), got.Width; want != got {
 				t.Errorf("want %d, got %d", want, got)
 			}
-			if want, got := int(math.Round(float64(img.Bounds().Max.Y)*tt.scale)), imgX.Bounds().Max.Y; want != got {
+			if want, got := int(math.Round(float64(img.Bounds().Max.Y)*tt.scale)), got.Height; want != got {
 				t.Errorf("want %d, got %d", want, got)
 			}
 		})
