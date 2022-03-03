@@ -16,7 +16,7 @@ const (
 type ImagePlane struct {
 	Width  int
 	Height int
-	Buffer []float64
+	Buffer []float32
 }
 
 // NewImagePlaneWidthHeight returns an image plane of specific width and height.
@@ -24,7 +24,7 @@ func NewImagePlaneWidthHeight(width, height int) ImagePlane {
 	return ImagePlane{
 		Width:  width,
 		Height: height,
-		Buffer: make([]float64, width*height),
+		Buffer: make([]float32, width*height),
 	}
 }
 
@@ -35,7 +35,7 @@ func NewNormalizedImagePlane(img ChannelImage) (ImagePlane, error) {
 		return ImagePlane{}, fmt.Errorf("invalid image channel: width*heignt=%d <> len(buffer)=%d", img.Width*img.Height, img.Buffer)
 	}
 	for i := range img.Buffer {
-		p.Buffer[i] = float64(img.Buffer[i]) / 255.0
+		p.Buffer[i] = float32(img.Buffer[i]) / 255.0
 	}
 	return p, nil
 }
@@ -46,7 +46,7 @@ func (p ImagePlane) Index(width, height int) int {
 }
 
 // Value returns the value corresponding to the specified width and height of the image.
-func (p ImagePlane) Value(width, height int) float64 {
+func (p ImagePlane) Value(width, height int) float32 {
 	i := p.Index(width, height)
 	if i < 0 || i >= len(p.Buffer) {
 		panic(fmt.Errorf("width %d, height %d, Index %d, len(buf) %d", width, height, i, len(p.Buffer)))
@@ -59,7 +59,7 @@ func (p ImagePlane) Value(width, height int) float64 {
 // [a0][a1][a2]
 // [b0][b1][b2]
 // [c0][c1][c2]   where (x, y) is b1.
-func (p ImagePlane) SegmentAt(x, y int) (a0, a1, a2, b0, b1, b2, c0, c1, c2 float64) {
+func (p ImagePlane) SegmentAt(x, y int) (a0, a1, a2, b0, b1, b2, c0, c1, c2 float32) {
 	i := (x - 1) + (y-1)*p.Width
 	j := i + p.Width
 	k := j + p.Width
@@ -70,7 +70,7 @@ func (p ImagePlane) SegmentAt(x, y int) (a0, a1, a2, b0, b1, b2, c0, c1, c2 floa
 }
 
 // SetAt sets the value to the buffer corresponding to the specified width and height of the image.
-func (p *ImagePlane) SetAt(width, height int, v float64) {
+func (p *ImagePlane) SetAt(width, height int, v float32) {
 	p.Buffer[p.Index(width, height)] = v
 }
 

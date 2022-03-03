@@ -150,6 +150,7 @@ func Run(args []string) error {
 	w2x, err := engine.NewWaifu2x(opt.mode, opt.noise, []engine.Option{
 		engine.Verbose(opt.verbose),
 		engine.Parallel(opt.parallel),
+		engine.LogOutput(os.Stderr),
 	}...)
 	if err != nil {
 		return err
