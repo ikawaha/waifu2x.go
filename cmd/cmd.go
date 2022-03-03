@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"image"
+	"image/gif"
 	"image/jpeg"
 	"image/png"
 	"io"
@@ -81,26 +82,20 @@ func (o *option) parse(args []string) error {
 	return nil
 }
 
-func parseInputImage(file string) (image.Image, error) {
-	var b []byte
-	in := os.Stdin
+func parseInputImage(file string) ([]byte, string, error) {
+	r := os.Stdin
 	if file != "" {
 		var err error
-		b, err = os.ReadFile(file)
+		r, err = os.Open(file)
 		if err != nil {
-			return nil, err
+			return nil, "", err
 		}
-	} else {
-		var err error
-		b, err = io.ReadAll(in)
-		if err != nil {
-			return nil, err
-		}
+		defer r.Close()
 	}
-	_, format, err := image.DecodeConfig(bytes.NewReader(b))
-	if err != nil {
-		return nil, err
-	}
+	return engine.ReadImageFile(r)
+}
+
+func decodeImage(b []byte, format string) (image.Image, error) {
 	var decoder func(io.Reader) (image.Image, error)
 	switch format {
 	case "jpeg":
@@ -113,13 +108,36 @@ func parseInputImage(file string) (image.Image, error) {
 	return decoder(bytes.NewReader(b))
 }
 
+func scaleUp(ctx context.Context, w2x *engine.Waifu2x, img image.Image, scale float64, w io.Writer) error {
+	ci, err := w2x.ScaleUp(ctx, img, scale)
+	if err != nil {
+		return err
+	}
+	rgba := ci.ImageRGBA()
+	if err := png.Encode(w, &rgba); err != nil {
+		return fmt.Errorf("output error: %w", err)
+	}
+	return nil
+}
+
+func scaleUpGIF(ctx context.Context, w2x *engine.Waifu2x, img *gif.GIF, scale float64, w io.Writer) error {
+	g, err := w2x.ScaleUpGIF(ctx, img, scale)
+	if err != nil {
+		return err
+	}
+	if err := gif.EncodeAll(w, g); err != nil {
+		return fmt.Errorf("output error: %w", err)
+	}
+	return nil
+}
+
 // Run executes the waifu2x command.
 func Run(args []string) error {
 	opt := newOption(os.Stderr, flag.ExitOnError)
 	if err := opt.parse(args); err != nil {
 		return err
 	}
-	img, err := parseInputImage(opt.input)
+	b, format, err := parseInputImage(opt.input)
 	if err != nil {
 		return fmt.Errorf("input error: %w", err)
 	}
@@ -131,11 +149,6 @@ func Run(args []string) error {
 	if err != nil {
 		return err
 	}
-	rgba, err := w2x.ScaleUp(context.TODO(), img, opt.scale)
-	if err != nil {
-		return err
-	}
-
 	var w io.Writer = os.Stdout
 	if opt.output != "" {
 		fp, err := os.Create(opt.output)
@@ -145,8 +158,17 @@ func Run(args []string) error {
 		defer fp.Close()
 		w = fp
 	}
-	if err := png.Encode(w, &rgba); err != nil {
-		return fmt.Errorf("output error: %w", err)
+	if format != "gif" {
+		img, err := decodeImage(b, format)
+		if err != nil {
+			return err
+		}
+		return scaleUp(context.TODO(), w2x, img, opt.scale, w)
 	}
-	return nil
+	img, err := gif.DecodeAll(bytes.NewReader(b))
+	if err != nil {
+		return err
+	}
+	return scaleUpGIF(context.TODO(), w2x, img, opt.scale, w)
+
 }

@@ -3,6 +3,8 @@ package engine
 import (
 	"fmt"
 	"image"
+	"image/color"
+	"image/draw"
 	"math"
 )
 
@@ -44,6 +46,15 @@ func NewChannelImage(img image.Image) (ChannelImage, bool, error) {
 			}
 		}
 		opaque = t.Opaque()
+	case *image.Paletted:
+		r := t.Rect
+		for y := 0; y < r.Dy(); y++ {
+			for x := 0; x < r.Dx(); x++ {
+				R, G, B, A := t.At(x, y).RGBA()
+				b = append(b, uint8(R>>8), uint8(G>>8), uint8(B>>8), uint8(A>>8))
+			}
+		}
+		opaque = t.Opaque()
 	default:
 		return ChannelImage{}, false, fmt.Errorf("unknown image format: %T", t)
 	}
@@ -77,6 +88,14 @@ func (c ChannelImage) ImageRGBA() image.RGBA {
 		Stride: r.Dx() * 4,
 		Rect:   r,
 	}
+}
+
+// ImagePaletted converts the chanel image to an image.Paletted and return it.
+func (c ChannelImage) ImagePaletted(p color.Palette) *image.Paletted {
+	rgba := c.ImageRGBA()
+	ret := image.NewPaletted(rgba.Bounds(), p)
+	draw.DrawMask(ret, image.Rect(0, 0, ret.Bounds().Max.X, ret.Bounds().Max.Y), &rgba, image.Point{}, nil, image.Point{}, draw.Src)
+	return ret
 }
 
 // ChannelDecompose decomposes a channel image to R, G, B and Alpha channels.
