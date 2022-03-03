@@ -10,13 +10,13 @@ import (
 
 // Param represents a parameter of the model.
 type Param struct {
-	Bias         []float64       `json:"bias"`         // バイアス
+	Bias         []float32       `json:"bias"`         // バイアス
 	KW           int             `json:"kW"`           // フィルタの幅
 	KH           int             `json:"kH"`           // フィルタの高さ
-	Weight       [][][][]float64 `json:"weight"`       // 重み
+	Weight       [][][][]float32 `json:"weight"`       // 重み
 	NInputPlane  int             `json:"nInputPlane"`  // 入力平面数
 	NOutputPlane int             `json:"nOutputPlane"` // 出力平面数
-	WeightVec    []float64
+	WeightVec    []float32
 }
 
 // Model represents a trained model.
@@ -130,7 +130,7 @@ func (m Model) setWeightVec() {
 		param := m[l]
 		// [nOutputPlane][nInputPlane][3][3]
 		const square = 9
-		vec := make([]float64, param.NInputPlane*param.NOutputPlane*9)
+		vec := make([]float32, param.NInputPlane*param.NOutputPlane*9)
 		for i := 0; i < param.NInputPlane; i++ {
 			for o := 0; o < param.NOutputPlane; o++ {
 				offset := i*param.NOutputPlane*square + o*square

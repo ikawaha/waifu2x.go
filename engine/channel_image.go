@@ -69,7 +69,7 @@ func NewChannelImage(img image.Image) (ChannelImage, bool, error) {
 func NewDenormalizedChannelImage(p ImagePlane) ChannelImage {
 	img := NewChannelImageWidthHeight(p.Width, p.Height)
 	for i := range p.Buffer {
-		v := int(math.Round(p.Buffer[i] * 255.0))
+		v := int(math.Round(float64(p.Buffer[i]) * 255.0))
 		if v < 0 {
 			v = 0
 		} else if v > 255 {

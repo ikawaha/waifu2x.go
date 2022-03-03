@@ -240,7 +240,7 @@ func (w Waifu2x) convertRGB(_ context.Context, imageR, imageG, imageB ChannelIma
 	return R, G, B, nil
 }
 
-func convolution(inputPlanes []ImagePlane, W []float64, nOutputPlane int, bias []float64) []ImagePlane {
+func convolution(inputPlanes []ImagePlane, W []float32, nOutputPlane int, bias []float32) []ImagePlane {
 	if len(inputPlanes) == 0 {
 		return nil
 	}
@@ -250,8 +250,8 @@ func convolution(inputPlanes []ImagePlane, W []float64, nOutputPlane int, bias [
 	for i := 0; i < nOutputPlane; i++ {
 		outputPlanes[i] = NewImagePlaneWidthHeight(width-2, height-2)
 	}
-	sumValues := make([]float64, nOutputPlane)
-	biasValues := make([]float64, nOutputPlane)
+	sumValues := make([]float32, nOutputPlane)
+	biasValues := make([]float32, nOutputPlane)
 	for i := 0; i < nOutputPlane; i++ {
 		biasValues[i] = bias[i]
 	}
